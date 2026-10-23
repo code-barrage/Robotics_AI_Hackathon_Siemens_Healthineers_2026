@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CT Companion | Recording Studio</title>
+  <link rel="icon" href="data:,"><link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="studio">
+  <header class="presenter-bar">
+    <div><div class="eyebrow">Research prototype / synchronized demo</div><h1>From obstacle awareness to patient awareness.</h1></div>
+    <div class="row">
+      <button data-key="0"><kbd>0</kbd>Hook</button><button data-key="1"><kbd>1</kbd>Identify</button>
+      <button data-key="q"><kbd>Q</kbd>Inform</button><button data-key="3"><kbd>3</kbd>Object</button>
+      <button data-key="4"><kbd>4</kbd>Clear</button><button data-key="5"><kbd>5</kbd>Position</button>
+      <button data-key="6"><kbd>6</kbd>Verify</button><button data-key="r"><kbd>R</kbd>Reset</button>
+      <button id="fullscreen">Fullscreen</button>
+    </div>
+  </header>
+  <div id="studio-notice" class="notice" role="alert"></div>
+  <main class="studio-frames">
+    <iframe id="robot-frame" src="/robot" title="Robot companion console" allow="camera; microphone; autoplay"></iframe>
+    <iframe id="acu-frame" src="/acu" title="ACU technologist workstation"></iframe>
+  </main>
+  <script>
+    "use strict";
+    const robot = document.getElementById("robot-frame");
+    const acu = document.getElementById("acu-frame");
+    function forward(key) {
+      robot.contentWindow.postMessage({ type: "ct-hotkey", key }, location.origin);
+    }
+    document.querySelectorAll("[data-key]").forEach((button) =>
+      button.addEventListener("click", () => forward(button.dataset.key)));
+    document.addEventListener("keydown", (event) => {
+      if (event.repeat || event.ctrlKey || event.altKey || event.metaKey ||
+          event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (event.key.length === 1 && "0123456qbr".includes(event.key.toLowerCase())) {
+        event.preventDefault(); forward(event.key);
+      }
+    });
+    window.addEventListener("message", (event) => {
+      if (event.origin === location.origin && event.source === acu.contentWindow && event.data?.type === "ct-hotkey") {
+        forward(event.data.key);
+      }
+    });
+    document.getElementById("fullscreen").addEventListener("click", async () => {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+      } catch (error) {
+        const notice = document.getElementById("studio-notice");
+        notice.textContent = `Fullscreen unavailable: ${error.message}. Use browser zoom or F11 instead.`;
+        notice.classList.add("visible");
+      }
+    });
+  </script>
+</body>
+</html>

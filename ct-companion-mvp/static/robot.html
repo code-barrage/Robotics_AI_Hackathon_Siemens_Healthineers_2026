@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CT Companion | Robot Console</title>
+  <link rel="icon" href="data:,">
+  <script async src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/styles.css">
+  <!-- Inert manifests let the vision loader enforce a non-blocking four-second deadline. -->
+  <script id="cdn-jsqr" type="application/x-ct-cdn" data-src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script data-tf-cdn type="application/x-ct-cdn" data-src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.22.0/dist/tf-core.min.js"></script>
+  <script data-tf-cdn type="application/x-ct-cdn" data-src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.22.0/dist/tf-converter.min.js"></script>
+  <script data-tf-cdn type="application/x-ct-cdn" data-src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.22.0/dist/tf-backend-webgl.min.js"></script>
+  <script data-tf-cdn type="application/x-ct-cdn" data-src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+  <script defer src="/static/shared_ws.js"></script>
+  <script defer src="/static/vision_engine.js"></script>
+</head>
+<body data-role="robot">
+  <script>document.body.dataset.embedded = String(window.parent !== window);</script>
+  <header class="topbar">
+    <div class="brand"><span class="brand-icon" aria-hidden="true">+</span><div>
+      <div class="eyebrow">Patient-side intelligence</div><h1>Companion / Robot Console</h1>
+    </div></div>
+    <span id="connection" class="connection" role="status">CONNECTING</span>
+  </header>
+  <div id="notice" class="notice" role="alert"></div>
+  <main class="shell stack">
+    <div class="pipeline" aria-label="Workflow capabilities">
+      <span data-capability="Identify">01 Identify</span><span data-capability="Guide">02 Guide</span>
+      <span data-capability="Inform">03 Inform</span><span data-capability="Check">04 Check</span>
+      <span data-capability="Handoff">05 Handoff</span>
+    </div>
+    <div id="approval-banner" class="banner" role="status" hidden></div>
+    <div id="privacy-banner" class="banner warning" role="alert" hidden>
+      Privacy pause / unverified person. Clinical details are hidden until Sid is confirmed.
+    </div>
+    <section class="panel">
+      <div class="panel-header"><h2>Perception / live clinical HUD</h2><span id="stage" class="eyebrow">WAITING</span></div>
+      <div class="vision">
+        <video id="camera" autoplay muted playsinline aria-label="Local webcam feed"></video>
+        <canvas id="hud" width="960" height="540" aria-label="Camera overlay, skeleton, simulated LiDAR, and room deviation region"></canvas>
+        <div class="vision-top"><span id="mode-label" class="chip">SIMULATED LiDAR / NOT DEPTH SENSING</span><span id="fps" class="chip">0 FPS</span></div>
+        <div class="vision-bottom"><span id="tracking-label" class="chip">WAITING FOR APPOINTMENT QR</span><span id="vision-engine" class="chip">LOADING VISION / 4s DEADLINE</span></div>
+      </div>
+      <div class="controls">
+        <button id="start-camera" class="primary">Start camera &amp; audio</button>
+        <button id="toggle-audio">Voice: OFF</button>
+        <button data-key="0"><kbd>0</kbd>LiDAR / human</button>
+        <button id="live-inputs">Resume live inputs</button>
+        <a class="button" href="/qr" target="_blank" rel="noopener">Appointment QR</a>
+      </div>
+      <div class="controls" aria-label="Deterministic presenter controls">
+        <button data-key="1"><kbd>1</kbd>Verify Sid</button>
+        <button data-key="2"><kbd>2</kbd>Identity mismatch</button>
+        <button data-key="q"><kbd>Q</kbd>Voice FAQ</button>
+        <button data-key="b"><kbd>B</kbd>Clean baseline</button>
+        <button data-key="3"><kbd>3</kbd>Foreign object</button>
+        <button data-key="4"><kbd>4</kbd>Room clear</button>
+        <button data-key="5"><kbd>5</kbd>Arms down / live check</button>
+        <button data-key="6"><kbd>6</kbd>Arms verified</button>
+        <button data-key="r" class="danger"><kbd>R</kbd>Reset all</button>
+      </div>
+      <div class="row between" style="margin-top:9px">
+        <small id="camera-status">CAMERA NOT STARTED / DEMO READY</small><small id="override-status">LIVE INPUTS / NO OVERRIDES</small>
+      </div>
+      <small id="engine-detail">Camera pixels stay in this browser. Waiting for MoveNet or Canvas fallback.</small>
+    </section>
+    <div class="two-columns">
+      <section class="panel stack">
+        <div class="patient"><div class="avatar" aria-hidden="true">S</div><div>
+          <h2 id="patient-name">Awaiting patient</h2><small id="patient-exam">Scan appointment QR to begin</small>
+        </div><span id="identity-status" class="status warn">WAITING</span></div>
+        <p id="guidance" class="muted">Welcome. Start camera &amp; audio, then show your appointment QR.</p>
+        <svg id="route" class="route" viewBox="0 0 380 65" role="img" aria-label="Demo route: Reception, corridor, CT Suite 2">
+          <path class="path" d="M25 30 H155 V16 H280 V30 H345"></path>
+          <circle cx="25" cy="30" r="6" fill="#06b6d4"></circle>
+          <rect class="destination" x="325" y="15" width="35" height="30" rx="5"></rect>
+          <text x="8" y="56">Reception</text><text x="150" y="51">Corridor</text><text x="300" y="59">CT Suite 2</text>
+          <text x="334" y="35" style="fill:white">CT</text>
+        </svg>
+        <div><small id="signature-status">NO LIVE SIGNATURE</small><br><small id="qr-engine">jsQR LOADING</small></div>
+      </section>
+      <section class="panel">
+        <div class="panel-header"><h2>Ask your companion</h2><small>Fixed protocol FAQ</small></div>
+        <p class="muted" style="font-size:11px">Demo knowledge base, not patient-specific medical advice. Symptoms and unknown questions go to staff.</p>
+        <form id="question-form" class="question-form">
+          <input id="question" aria-label="Your preparation question" maxlength="500" placeholder="Ask about contrast, fasting, metal..." autocomplete="off">
+          <button type="submit">Send</button><button type="button" id="microphone" title="Browser speech recognition may use its provider's online service">Mic</button>
+        </form>
+        <div class="quick-asks">
+          <button data-question="Is the contrast dye going to hurt?">Contrast dye?</button>
+          <button data-question="Why couldn't I eat breakfast?">Breakfast?</button>
+          <button data-question="Can I keep my metal watch on?">Metal watch?</button>
+        </div>
+        <div id="qa-log" class="qa-log" aria-live="polite"></div>
+      </section>
+    </div>
+    <div class="row between"><small id="baseline-status">NO CLEAN REFERENCE</small><small id="pose-detail">Position 1 of 8 / Head-first supine / Arms up</small></div>
+  </main>
+  <footer>Research Prototype — Neither room readiness nor positioning check is a validated clinical safety system.<br>
+    Simulated LiDAR and demo match scores are illustrative. No scanner connection. <span id="session-version"></span>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CT Companion | Appointment QR</title>
+  <link rel="icon" href="data:,"><link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="utility">
+    <div class="eyebrow">Demo appointment / synthetic patient</div>
+    <h1>Sid / Abdominal CT</h1>
+    <p class="muted">Hold this code steady in front of the robot webcam. Use a phone, another display, or a printout.</p>
+    <div class="qr-card">
+      <div id="qr" aria-label="Appointment QR code"></div>
+      <strong>PATIENT: SID | EXAM: ABDOMINAL CT (CONTRAST)</strong>
+      <p>PROTOCOL: HEAD-FIRST SUPINE (ARMS UP)</p>
+    </div>
+    <h2>Scannable payload</h2>
+    <pre id="payload" class="payload"></pre>
+    <p class="muted">This utility generates the QR locally, without network access or an external QR service.
+      The browser decoder accepts the JSON appointment below; the protocol is loaded by the backend.</p>
+    <div class="row" style="margin:16px 0">
+      <button id="download">Save QR as SVG</button><button id="print">Print QR</button><a class="button" href="/studio">Open studio</a>
+    </div>
+    <p class="muted">To use a phone without exposing the backend to your network, save the SVG and transfer it to the phone,
+      or photograph this QR with the phone first. Then display the saved image to the laptop webcam.</p>
+  </main>
+  <footer>Research Prototype — Neither room readiness nor positioning check is a validated clinical safety system.</footer>
+  <script>
+    "use strict";
+    const payload = JSON.stringify({ patient: "Sid", exam: "Abdominal CT" });
+    document.getElementById("payload").textContent = payload;
+
+    // Fixed version 3-L, byte mode, one RS block; 55 data + 15 parity codewords.
+    function makeQR(value) {
+      const bytes = new TextEncoder().encode(value);
+      if (bytes.length > 53) throw new Error("Version 3-L byte payload exceeds capacity.");
+      const bits = [];
+      const put = (number, length) => { for (let i = length - 1; i >= 0; i--) bits.push((number >>> i) & 1); };
+      put(4, 4); put(bytes.length, 8);
+      bytes.forEach((byte) => put(byte, 8));
+      put(0, Math.min(4, 440 - bits.length));
+      while (bits.length % 8) bits.push(0);
+      const data = [];
+      for (let i = 0; i < bits.length; i += 8) data.push(bits.slice(i, i + 8).reduce((n, bit) => n * 2 + bit, 0));
+      for (let i = 0; data.length < 55; i++) data.push(i % 2 ? 0x11 : 0xec);
+      function multiply(a, b) {
+        let result = 0;
+        while (b) { if (b & 1) result ^= a; a <<= 1; if (a & 0x100) a ^= 0x11d; b >>>= 1; }
+        return result;
+      }
+      let generator = [1], root = 1;
+      for (let i = 0; i < 15; i++) {
+        const next = new Array(generator.length + 1).fill(0);
+        generator.forEach((coefficient, j) => { next[j] ^= coefficient; next[j + 1] ^= multiply(coefficient, root); });
+        generator = next; root = multiply(root, 2);
+      }
+      const parity = new Array(15).fill(0);
+      for (const byte of data) {
+        const factor = byte ^ parity.shift(); parity.push(0);
+        for (let i = 0; i < 15; i++) parity[i] ^= multiply(generator[i + 1], factor);
+      }
+      const stream = [];
+      for (const byte of [...data, ...parity]) for (let i = 7; i >= 0; i--) stream.push((byte >>> i) & 1);
+      const size = 29, matrix = Array.from({ length: size }, () => new Array(size).fill(false));
+      const reserved = Array.from({ length: size }, () => new Array(size).fill(false));
+      const set = (x, y, dark) => {
+        if (x < 0 || y < 0 || x >= size || y >= size) return;
+        matrix[y][x] = Boolean(dark); reserved[y][x] = true;
+      };
+      for (const [cx, cy] of [[3, 3], [25, 3], [3, 25]]) {
+        for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+          const distance = Math.max(Math.abs(dx), Math.abs(dy));
+          set(cx + dx, cy + dy, distance !== 2 && distance !== 4);
+        }
+      }
+      for (let i = 8; i < size - 8; i++) { set(i, 6, i % 2 === 0); set(6, i, i % 2 === 0); }
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        set(22 + dx, 22 + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+      }
+      const format = 0x77c4; // BCH-protected level L, mask 0.
+      const bit = (i) => (format >>> i) & 1;
+      for (let i = 0; i <= 5; i++) set(8, i, bit(i));
+      set(8, 7, bit(6)); set(8, 8, bit(7)); set(7, 8, bit(8));
+      for (let i = 9; i < 15; i++) set(14 - i, 8, bit(i));
+      for (let i = 0; i < 8; i++) set(size - 1 - i, 8, bit(i));
+      for (let i = 8; i < 15; i++) set(8, size - 15 + i, bit(i));
+      set(8, size - 8, true);
+      let index = 0, upward = true;
+      for (let right = size - 1; right >= 1; right -= 2) {
+        if (right === 6) right--;
+        for (let step = 0; step < size; step++) {
+          const y = upward ? size - 1 - step : step;
+          for (let offset = 0; offset < 2; offset++) {
+            const x = right - offset;
+            if (!reserved[y][x]) matrix[y][x] = Boolean((stream[index++] || 0) ^ ((x + y) % 2 === 0 ? 1 : 0));
+          }
+        }
+        upward = !upward;
+      }
+      return matrix;
+    }
+    const matrix = makeQR(payload);
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 37 37"); svg.setAttribute("xmlns", ns);
+    svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Sid appointment QR");
+    const background = document.createElementNS(ns, "rect");
+    background.setAttribute("width", "37"); background.setAttribute("height", "37"); background.setAttribute("fill", "white");
+    svg.append(background);
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("fill", "black");
+    path.setAttribute("d", matrix.flatMap((row, y) => row.flatMap((dark, x) =>
+      dark ? [`M${x + 4} ${y + 4}h1v1h-1z`] : [])).join(""));
+    svg.append(path); document.getElementById("qr").append(svg);
+    document.getElementById("download").addEventListener("click", () => {
+      const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob), link = document.createElement("a");
+      link.href = url; link.download = "sid-appointment.svg"; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    document.getElementById("print").addEventListener("click", () => window.print());
+  </script>
+</body>
+</html>
