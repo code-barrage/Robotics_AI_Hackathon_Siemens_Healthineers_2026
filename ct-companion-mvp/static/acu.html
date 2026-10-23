@@ -2,76 +2,75 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CT Companion | ACU Workstation</title>
-  <link rel="icon" href="data:,"><link rel="stylesheet" href="/static/styles.css">
-  <script defer src="/static/shared_ws.js"></script>
+  <title>CT 2 | Clinician companion</title><link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/static/shared_ws.js"></script><script defer src="/static/assistance.js"></script>
+  <script defer src="/static/experience.js"></script>
 </head>
-<body data-role="acu">
-  <script>document.body.dataset.embedded = String(window.parent !== window);</script>
-  <header class="topbar"><div class="brand"><span class="brand-icon" aria-hidden="true">+</span><div>
-    <div class="eyebrow">Advanced control unit / CT Suite 2</div><h1>Technologist Workstation</h1>
-  </div></div><span id="connection" class="connection" role="status">CONNECTING</span></header>
+<body data-role="acu" class="clinician-app">
+  <a class="skip-link" href="#companion-widget">Skip to companion status</a>
+  <header class="clinician-header"><div class="brand"><span class="companion-mark" aria-hidden="true">+</span>
+    <div><div class="eyebrow">Clinician workspace</div><h1>CT Room 2</h1></div></div>
+    <span id="connection" class="connection" role="status">CONNECTING</span></header>
   <div id="notice" class="notice" role="alert"></div>
-  <main class="shell stack">
-    <div class="pipeline" aria-label="Workflow capabilities">
-      <span data-capability="Identify">Identify</span><span data-capability="Guide">Guide</span>
-      <span data-capability="Inform">Inform</span><span data-capability="Check">Check</span><span data-capability="Handoff">Handoff</span>
-    </div>
-    <div id="approval-banner" class="banner" role="status" hidden></div>
-    <section class="kpis" aria-label="Workflow metrics">
-      <div class="kpi"><div class="label">Interruptions Prevented</div><div id="interruptions" class="value">0</div><small>FAQ resolutions</small></div>
-      <div class="kpi"><div class="label">Est. Tech Time Saved</div><div id="saved" class="value">0.0 min</div><small>1.5 min / FAQ</small></div>
-      <div class="kpi"><div class="label">Room 2 Status</div><div id="room-kpi" class="value">UNKNOWN</div><small>ROI deviation check</small></div>
-      <div class="kpi"><div class="label">Patient Readiness</div><div id="readiness" class="value">PENDING</div><small>Three prerequisites</small></div>
+  <main class="clinician-main">
+    <section class="quiet-workspace" aria-labelledby="quiet-title">
+      <div class="quiet-orbit" aria-hidden="true"><span>+</span></div>
+      <p class="eyebrow">Companion, in the background</p>
+      <h2 id="quiet-title">Your focus stays here.</h2>
+      <p>Routine updates stay in the strip below.<br>Open it only when you need to help.</p>
+      <span class="workspace-caption">Companion-only prototype. Your existing scan workstation is unchanged.</span>
     </section>
-    <section class="panel stack">
-      <div class="panel-header"><div><h2 id="patient-name">Awaiting patient</h2><small id="patient-exam">No appointment loaded</small></div><span id="stage" class="eyebrow">WAITING</span></div>
-      <div class="checks">
-        <div class="check"><h3>01 / Identity</h3><span id="identity-status" class="status warn">WAITING</span><small id="identity-source" class="source">No evidence yet</small></div>
-        <div class="check"><h3>02 / Room readiness</h3><span id="room-status" class="status warn">UNKNOWN</span><small id="room-source" class="source">No evidence yet</small></div>
-        <div class="check"><h3>03 / Positioning</h3><span id="pose-status" class="status warn">NOT CHECKED</span><small id="pose-source" class="source">No evidence yet</small></div>
+    <section id="clinician-detail" class="clinician-detail" hidden aria-labelledby="detail-title">
+      <div class="detail-heading"><div><span class="eyebrow">Remote assistance</span><h2 id="detail-title">Patient journey</h2></div>
+        <button id="close-detail" class="text-button">Minimize</button></div>
+      <div class="detail-summary"><strong id="detail-patient">Waiting for patient</strong><span id="detail-journey">At reception</span></div>
+      <p id="detail-next" class="detail-next">No action needed.</p>
+      <div id="simple-checks" class="simple-checks" aria-label="Readiness checks"></div>
+      <div class="row detail-actions">
+        <button id="dispatch-patient" class="primary">Invite patient to CT 2</button>
+        <button id="journey-control">Pause escort</button>
+        <button id="approve" class="primary">Approve scout simulation</button>
       </div>
-      <div class="position-panel">
-        <svg id="pose-figure" class="pose-figure" viewBox="0 0 100 115" role="img" aria-label="Arms positioning reference illustration">
-          <g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="50" cy="21" r="10"></circle><path d="M50 33 V72 M50 72 L33 106 M50 72 L67 106"></path>
-            <path class="arms-down" d="M50 42 L30 51 L20 77 M50 42 L70 51 L80 77"></path>
-            <path class="arms-up" d="M50 42 L30 32 L20 7 M50 42 L70 32 L80 7"></path>
-          </g>
-        </svg>
-        <div><div class="eyebrow">Siemens 8-reference positioning / illustrative</div>
-          <p id="pose-detail">Position 1 of 8 / Head-first supine / Arms up</p>
-          <small>98% is a demo score, not measured accuracy. Webcam checks arms only; it cannot confirm supine orientation.</small>
-          <div class="reference-grid" aria-label="Eight standard orientation references; head-first supine selected">
-            <span class="selected">1 HFS</span><span>2 HFP</span><span>3 HFDR</span><span>4 HFDL</span>
-            <span>5 FFS</span><span>6 FFP</span><span>7 FFDR</span><span>8 FFDL</span>
-          </div>
+      <small id="approval-reason">Patient confirmation, arrival, identity, room and position must be verified.</small>
+      <div id="simple-alerts" class="simple-alerts" aria-label="Conditions needing attention"></div>
+      <section class="support-card" aria-labelledby="support-heading">
+        <div class="row between"><h3 id="support-heading">See and speak, without leaving</h3><span class="privacy-label">Consent first</span></div>
+        <p id="call-status">No live connection. Microphone off.</p>
+        <div class="row">
+          <button id="call-request" class="primary">Request live support</button>
+          <button id="call-mute" hidden>Mute microphone</button><button id="call-end" hidden>End call</button>
+          <button id="play-audio" hidden>Enable call sound</button>
         </div>
-      </div>
-    </section>
-    <section class="panel">
-      <div class="panel-header"><h2>Room &amp; patient alerts</h2><small id="baseline-status">NO CLEAN REFERENCE</small></div>
-      <div id="alerts" class="alert-list" aria-live="polite">No active alerts. Monitoring workflow.</div>
-      <small>Acknowledgment records review; it never clears a failed readiness check.</small>
-    </section>
-    <section class="panel">
-      <button id="approve" data-command="approve" class="primary approval" disabled>Approve &amp; Initiate CT Scan</button>
-      <small id="approval-reason">Locked until identity, room readiness, and positioning are green.</small>
-    </section>
-    <div class="two-columns">
-      <section class="panel">
-        <div class="panel-header"><h2>Clinical Event Log</h2><small>Live</small></div>
-        <ol id="event-log" class="event-log" aria-label="Timestamped clinical events"></ol>
+        <div id="remote-video-wrap" class="remote-video-wrap" hidden>
+          <video id="remote-video" autoplay playsinline muted hidden aria-label="Consented live robot camera"></video>
+          <p id="remote-video-status">Camera is shared only with patient consent.</p>
+        </div>
+        <audio id="remote-audio" autoplay hidden></audio>
+        <small>No recording. The patient can decline video, mute, or end the call. Use headphones during a single-laptop demo.</small>
       </section>
-      <section class="panel">
-        <div class="panel-header"><h2>Patient Q&amp;A</h2><small>Auditable corpus</small></div>
-        <div id="qa-log" class="qa-log" aria-live="polite"></div>
-      </section>
-    </div>
-    <div class="row between"><small id="session-version"></small><button data-command="reset" class="danger">Reset demo session</button></div>
+      <details id="written-help"><summary>Send written guidance <span>Also read aloud on the patient tablet</span></summary>
+        <p id="message-privacy-note" class="muted">Identity is not confirmed. Send only general reassurance.</p>
+        <div id="message-log" class="message-log" role="log" aria-label="Written conversation"></div>
+        <form id="message-form" class="staff-message-form"><label for="message-input" class="sr-only">Message to patient</label>
+          <input id="message-input" maxlength="500" required autocomplete="off" placeholder="A short, reassuring message..."><button type="submit">Send</button></form>
+        <button id="resolve-help" class="text-button">Mark help request handled</button>
+      </details>
+      <details class="activity-details"><summary>Recent activity <span>Only if you need the detail</span></summary>
+        <p class="muted"><span id="interruptions">0</span> FAQs answered automatically · <span id="saved">0 min</span> estimated time saved</p>
+        <ol id="compact-log" class="event-log"></ol><div id="clinician-qa" class="qa-log"></div>
+      </details>
+    </section>
   </main>
-  <footer>Research Prototype — Neither room readiness nor positioning check is a validated clinical safety system.<br>
-    Simulated scout only. No clinical approval, scanner integration, or diagnostic output.
-  </footer>
+  <aside class="companion-dock" aria-label="Companion status">
+    <button id="companion-widget" class="companion-widget" aria-expanded="false" aria-controls="clinician-detail">
+      <span id="widget-symbol" class="widget-symbol" aria-hidden="true">✓</span>
+      <span class="widget-copy"><strong id="widget-title">Companion is ready</strong><span id="widget-subtitle">Waiting for the patient's wristband.</span></span>
+      <span id="widget-action" class="widget-action">View journey <span aria-hidden="true">↗</span></span>
+    </button>
+    <span id="widget-announcement" class="sr-only" role="status" aria-live="polite"></span>
+    <span id="urgent-announcement" class="sr-only" role="alert"></span>
+    <small>Research Prototype — Neither room readiness nor positioning check is a validated clinical safety system.</small>
+  </aside>
 </body>
 </html>

@@ -121,6 +121,8 @@
       $("live-inputs").addEventListener("click", () => this.resumeLive());
       document.querySelectorAll("[data-key]").forEach((button) =>
         button.addEventListener("click", () => this.hotkey(button.dataset.key)));
+      document.querySelectorAll("[data-scenario]").forEach((button) =>
+        button.addEventListener("click", () => this.ws.send(button.dataset.scenario, { source: "override" })));
       document.addEventListener("keydown", (event) => {
         if (event.repeat || event.ctrlKey || event.altKey || event.metaKey ||
             event.target.closest("input, textarea, select, [contenteditable='true']")) return;
@@ -193,9 +195,6 @@
       }
     }
     async startCamera() {
-      this.audio = true;
-      text("toggle-audio", "Voice: ON");
-      this.speak("Companion console ready.");
       if (this.stream || this.cameraStarting) return;
       if (!navigator.mediaDevices?.getUserMedia) {
         this.ws.error("Camera API unavailable. Use localhost or HTTPS; all presenter overrides still work.");

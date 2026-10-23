@@ -32,6 +32,11 @@
         let message;
         try { message = JSON.parse(event.data); }
         catch (error) { this.error(`Invalid server response: ${error.message}`); return; }
+        if (message.type === "hello") { this.peerId = message.peer_id; return; }
+        if (message.type === "signal") {
+          this.dispatchEvent(new CustomEvent("signal", { detail: message }));
+          return;
+        }
         if (message.type === "error") { this.error(message.message); return; }
         if (message.type !== "state") { this.error("Unknown server message."); return; }
         const previous = this.state;
@@ -39,16 +44,20 @@
         this.connected = true;
         set("connection", "LIVE SYNC");
         $("connection")?.classList.add("online");
-        render(this.state);
+        if (role === "robot") render(this.state);
         this.dispatchEvent(new CustomEvent("state", { detail: { state: this.state, previous } }));
       };
       this.socket.onerror = () => this.error("WebSocket unavailable. Reconnecting; actions are not queued.");
-      this.socket.onclose = () => {
+      this.socket.onclose = (event) => {
         this.connected = false;
         set("connection", "OFFLINE / RETRYING");
         $("connection")?.classList.remove("online");
         if ($("approve")) $("approve").disabled = true;
         this.dispatchEvent(new Event("offline"));
+        if (event.code === 1008) {
+          this.closed = true;
+          set("connection", "OTHER CONTROLLER OPEN");
+        }
         if (!this.closed) {
           this.timer = setTimeout(() => this.connect(), this.retry);
           this.retry = Math.min(8000, this.retry * 2);
@@ -68,6 +77,15 @@
       }
       $("notice")?.classList.remove("visible");
       this.socket.send(JSON.stringify({ action, epoch: this.state.epoch, ...fields }));
+      return true;
+    }
+    signal(callId, target, fields) {
+      if (!this.connected || this.socket.readyState !== WebSocket.OPEN) {
+        this.error("Connection lost. Live support has stopped.");
+        return false;
+      }
+      this.socket.send(JSON.stringify({ type: "signal", epoch: this.state.epoch,
+        call_id: callId, target, ...fields }));
       return true;
     }
   }

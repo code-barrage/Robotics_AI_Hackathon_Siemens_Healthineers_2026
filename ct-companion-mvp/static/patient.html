@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your CT companion</title><link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/static/shared_ws.js"></script>
+  <script defer src="/static/assistance.js"></script>
+  <script defer src="/static/experience.js"></script>
+</head>
+<body data-role="patient" class="patient-app">
+  <a class="skip-link" href="#patient-main">Skip to your next step</a>
+  <header class="patient-header">
+    <div class="brand"><span class="companion-mark" aria-hidden="true">+</span><strong>Your companion</strong></div>
+    <div class="row">
+      <button id="large-text" aria-pressed="false" class="soft-button">Aa <span>Larger text</span></button>
+      <button id="voice-toggle" aria-pressed="true" class="soft-button">Voice on</button>
+    </div>
+  </header>
+  <div id="notice" class="notice" role="alert"></div>
+  <div id="offline-banner" class="patient-warning" role="alert" hidden>Connection lost. Please stay where you are and ask nearby staff for help.</div>
+  <main id="patient-main" class="patient-main">
+    <ol class="patient-steps" aria-label="Your visit">
+      <li id="step-check" aria-current="step"><span>1</span> Check in</li>
+      <li id="step-journey"><span>2</span> Go together</li>
+      <li id="step-scan"><span>3</span> Get ready</li>
+    </ol>
+    <section class="patient-hero" aria-labelledby="patient-title">
+      <div class="hero-copy">
+        <p id="patient-kicker" class="patient-kicker">A little help, every step of the way</p>
+        <h1 id="patient-title">Hello. Let's get you to your scan.</h1>
+        <p id="patient-instruction" class="patient-instruction" aria-live="polite">Show the code on your wristband to the robot's camera.</p>
+        <p id="patient-subtext" class="patient-subtext">Your care team is always close by.</p>
+        <div class="patient-main-actions">
+          <button id="patient-start" class="patient-primary">Start &amp; hear instructions</button>
+          <button id="patient-confirm" class="patient-primary" hidden>Yes, that's me</button>
+          <button id="repeat-guidance" class="patient-secondary">Read this aloud</button>
+        </div>
+      </div>
+      <div id="wristband-visual" class="wristband-visual">
+        <svg viewBox="0 0 320 260" role="img" aria-label="Hold the code on your wristband in front of the robot camera.">
+          <rect x="22" y="24" width="276" height="212" rx="38" fill="#e3f4ef"/>
+          <path d="M38 157 L280 94" stroke="#d5ac8b" stroke-width="65" stroke-linecap="round"/>
+          <g transform="translate(120 78) rotate(-15 43 53)">
+            <rect width="86" height="108" rx="15" fill="white" stroke="#126e62" stroke-width="3"/>
+            <g fill="#17483f">
+              <path d="M16 21h22v22H16zm32 0h22v22H48zM16 53h22v22H16z"/>
+              <path d="M48 53h9v9h-9zm13 0h9v22h-9zM48 66h9v9h-9z"/>
+            </g>
+            <path d="M22 88h42" stroke="#9bc9bb" stroke-width="5" stroke-linecap="round"/>
+          </g>
+          <path d="M81 43H62v19M239 43h19v19M81 217H62v-19M239 217h19v-19" fill="none" stroke="#14786a" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+        <span>Show your wristband here</span>
+      </div>
+    </section>
+    <section id="journey-view" class="journey-card" aria-labelledby="journey-heading" hidden>
+      <div class="row between"><h2 id="journey-heading">We're going to CT Room 2</h2><span id="journey-label" class="journey-label">Waiting to start</span></div>
+      <svg id="hospital-map" class="hospital-map" viewBox="0 0 720 330" role="img" aria-label="Route from reception, along the corridor, to CT Room 2. The dot shows your simulated location.">
+        <rect x="10" y="10" width="700" height="310" rx="28" fill="#f1f6f4"/>
+        <g fill="#fff" stroke="#d6e3df" stroke-width="2">
+          <rect x="32" y="32" width="174" height="100" rx="18"/><rect x="250" y="32" width="180" height="100" rx="18"/>
+          <rect x="32" y="223" width="180" height="74" rx="18"/><rect x="250" y="223" width="180" height="74" rx="18"/>
+          <rect x="487" y="204" width="200" height="93" rx="18"/>
+        </g>
+        <rect x="487" y="32" width="200" height="100" rx="18" fill="#d3eee4" stroke="#157463" stroke-width="3"/>
+        <g fill="#37594f" text-anchor="middle" font-family="system-ui" font-size="18">
+          <text x="119" y="88">Reception</text><text x="340" y="88">Waiting area</text>
+          <text x="122" y="268">Care team</text><text x="340" y="268">Consultation</text>
+          <text x="587" y="257">CT Room 1</text>
+        </g>
+        <text x="587" y="88" text-anchor="middle" fill="#0c5145" font-size="24" font-weight="700">CT Room 2</text>
+        <path id="map-route" d="M119 127 V174 H587 V132" fill="none" stroke="#c6dbd4" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="map-progress" d="M119 127 V174 H587 V132" fill="none" stroke="#147d6c" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0 1000"/>
+        <g id="map-marker" transform="translate(119 127)">
+          <circle r="22" fill="#147d6c" stroke="white" stroke-width="5"/>
+          <path d="M-7 3 L0-6 L7 3" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+        </g>
+      </svg>
+      <div class="row between"><p id="map-caption">You are at reception.</p><button id="patient-pause" class="patient-secondary" hidden>Pause. I need a moment.</button></div>
+      <small>Demonstration route. No physical robot is moving.</small>
+    </section>
+    <section id="preparation-view" class="preparation-card" hidden aria-labelledby="preparation-title">
+      <svg class="arms-animation" viewBox="0 0 180 160" role="img" aria-label="Illustration: raise both arms comfortably above shoulder level.">
+        <circle cx="90" cy="40" r="17" fill="#d5ac8b"/>
+        <path d="M90 60V110M90 110L68 147M90 110L112 147" fill="none" stroke="#147d6c" stroke-width="12" stroke-linecap="round"/>
+        <path class="guide-left-arm" d="M90 70 L58 55 L42 18" fill="none" stroke="#147d6c" stroke-width="10" stroke-linecap="round"/>
+        <path class="guide-right-arm" d="M90 70 L122 55 L138 18" fill="none" stroke="#147d6c" stroke-width="10" stroke-linecap="round"/>
+      </svg>
+      <div><h2 id="preparation-title">Your care team will help you get ready.</h2>
+        <p id="preparation-caption">Raise both arms only if comfortable, and follow your technologist's instructions.</p>
+        <button id="animation-toggle" class="patient-secondary" aria-pressed="false">Play positioning guide</button>
+      </div>
+    </section>
+    <section id="staff-note" class="staff-note" hidden aria-live="polite"><h2>A message from your care team</h2><p id="staff-note-text"></p></section>
+    <div class="patient-tools">
+      <button id="patient-help" class="help-button"><span aria-hidden="true">+</span> I need help</button>
+      <button id="open-questions" class="patient-secondary">I have a question</button>
+      <button id="open-messages" class="patient-secondary">Write to my care team</button>
+    </div>
+    <p id="help-feedback" class="help-feedback" role="status"></p>
+    <section id="call-panel" class="patient-call" hidden aria-labelledby="call-heading">
+      <h2 id="call-heading">Your care team is here</h2><p id="call-status">Microphone off.</p>
+      <div class="row"><button id="call-mute" class="patient-secondary">Mute microphone</button>
+        <button id="call-end" class="help-button">End call</button><button id="play-audio" class="patient-primary" hidden>Enable call sound</button></div>
+      <p>For written help, use “Write to my care team”. Calls are not recorded or automatically captioned.</p>
+    </section>
+    <audio id="remote-audio" autoplay hidden></audio>
+  </main>
+  <dialog id="question-dialog" class="patient-dialog">
+    <div class="row between"><h2>What would you like to know?</h2><button data-close="question-dialog" aria-label="Close questions">Close</button></div>
+    <div class="patient-faq">
+      <button data-question="Is the contrast dye going to hurt?">What does contrast feel like?</button>
+      <button data-question="Why couldn't I eat breakfast?">Why couldn't I eat?</button>
+      <button data-question="Can I keep my metal watch on?">Can I keep my watch on?</button>
+    </div>
+    <form id="question-form" class="patient-form"><label for="question">Or type your question</label>
+      <input id="question" maxlength="500" autocomplete="off"><div class="row"><button type="submit" class="patient-primary">Ask</button><button type="button" id="microphone" class="patient-secondary">Speak a question</button></div>
+    </form>
+    <p id="recognition-note" class="patient-subtext">Voice questions may use your browser provider's online service. Typing always works.</p>
+    <div id="patient-answer" class="patient-answer" aria-live="polite"></div>
+    <p class="patient-subtext">General preparation information, not personal medical advice.</p>
+  </dialog>
+  <dialog id="message-dialog" class="patient-dialog">
+    <div class="row between"><h2>Write to your care team</h2><button data-close="message-dialog">Close</button></div>
+    <p>Messages appear on your technologist's screen. For urgent help, alert nearby staff.</p>
+    <div id="message-log" class="message-log" role="log" aria-label="Written conversation"></div>
+    <form id="message-form" class="patient-form"><label for="message-input">Your message</label><input id="message-input" maxlength="500" autocomplete="off" required>
+      <button type="submit" class="patient-primary">Send message</button></form>
+  </dialog>
+  <dialog id="consent-dialog" class="patient-dialog" aria-labelledby="consent-title">
+    <h2 id="consent-title">Would you like to talk to your care team?</h2>
+    <p>They can hear you after you choose “Accept call”. You can mute your microphone or end the call at any time.</p>
+    <label class="consent-choice"><input id="camera-consent" type="checkbox"> Also let them see the robot camera during this call</label>
+    <p id="consent-camera-note">Camera sharing is optional. Nothing is recorded.</p>
+    <div class="patient-main-actions"><button id="call-accept" class="patient-primary">Accept call</button><button id="call-decline" class="patient-secondary">Not now. Use messages.</button></div>
+  </dialog>
+  <footer class="patient-footer"><span id="connection" role="status">Connecting to your care team</span><span>Research demonstration. Not a clinical safety system.</span></footer>
+</body>
+</html>

@@ -2,45 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CT Companion | Recording Studio</title>
-  <link rel="icon" href="data:,"><link rel="stylesheet" href="/static/styles.css">
+  <title>Companion | Three perspectives</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/static/styles.css">
 </head>
 <body class="studio">
   <header class="presenter-bar">
-    <div><div class="eyebrow">Research prototype / synchronized demo</div><h1>From obstacle awareness to patient awareness.</h1></div>
-    <div class="row">
-      <button data-key="0"><kbd>0</kbd>Hook</button><button data-key="1"><kbd>1</kbd>Identify</button>
-      <button data-key="q"><kbd>Q</kbd>Inform</button><button data-key="3"><kbd>3</kbd>Object</button>
-      <button data-key="4"><kbd>4</kbd>Clear</button><button data-key="5"><kbd>5</kbd>Position</button>
-      <button data-key="6"><kbd>6</kbd>Verify</button><button data-key="r"><kbd>R</kbd>Reset</button>
-      <button id="fullscreen">Fullscreen</button>
-    </div>
+    <div><div class="eyebrow">One companion. Three perspectives.</div><h1>Simple for people. Visible for the demo.</h1></div>
+    <div class="row"><button id="layout-toggle">Focus camera lab</button><button id="fullscreen">Fullscreen</button><button data-key="r">Reset demo</button></div>
   </header>
   <div id="studio-notice" class="notice" role="alert"></div>
-  <main class="studio-frames">
-    <iframe id="robot-frame" src="/robot" title="Robot companion console" allow="camera; microphone; autoplay"></iframe>
-    <iframe id="acu-frame" src="/acu" title="ACU technologist workstation"></iframe>
+  <main class="three-views">
+    <section class="studio-pane"><div class="pane-label">01 / Patient tablet <a href="/patient" target="_blank" rel="noopener">Standalone ↗</a></div>
+      <iframe id="patient-frame" src="/patient" title="Patient tablet" allow="microphone; autoplay"></iframe></section>
+    <section class="studio-pane"><div class="pane-label">02 / Clinician <a href="/acu" target="_blank" rel="noopener">Standalone ↗</a></div>
+      <iframe id="acu-frame" src="/acu" title="Quiet clinician workspace" allow="microphone; autoplay"></iframe></section>
+    <section class="studio-pane"><div class="pane-label">03 / Camera lab <a href="/camera" target="_blank" rel="noopener">Standalone ↗</a></div>
+      <iframe id="robot-frame" src="/camera" title="Robot camera engineering lab" allow="camera; microphone; autoplay"></iframe></section>
   </main>
   <script>
     "use strict";
-    const robot = document.getElementById("robot-frame");
-    const acu = document.getElementById("acu-frame");
-    function forward(key) {
-      robot.contentWindow.postMessage({ type: "ct-hotkey", key }, location.origin);
-    }
-    document.querySelectorAll("[data-key]").forEach((button) =>
-      button.addEventListener("click", () => forward(button.dataset.key)));
-    document.addEventListener("keydown", (event) => {
+    const camera = document.getElementById("robot-frame"), acu = document.getElementById("acu-frame");
+    const forward = key => camera.contentWindow.postMessage({ type: "ct-hotkey", key }, location.origin);
+    document.querySelectorAll("[data-key]").forEach(button => button.addEventListener("click", () => forward(button.dataset.key)));
+    document.addEventListener("keydown", event => {
       if (event.repeat || event.ctrlKey || event.altKey || event.metaKey ||
           event.target.closest("input, textarea, select, [contenteditable='true']")) return;
-      if (event.key.length === 1 && "0123456qbr".includes(event.key.toLowerCase())) {
-        event.preventDefault(); forward(event.key);
-      }
+      if (event.key.length === 1 && "0123456qbr".includes(event.key.toLowerCase())) { event.preventDefault(); forward(event.key); }
     });
-    window.addEventListener("message", (event) => {
-      if (event.origin === location.origin && event.source === acu.contentWindow && event.data?.type === "ct-hotkey") {
-        forward(event.data.key);
-      }
+    window.addEventListener("message", event => {
+      if (event.origin === location.origin && event.source === acu.contentWindow && event.data?.type === "ct-hotkey") forward(event.data.key);
+    });
+    document.getElementById("layout-toggle").addEventListener("click", event => {
+      const focused = document.body.classList.toggle("camera-focus");
+      event.target.textContent = focused ? "Balance all views" : "Focus camera lab";
     });
     document.getElementById("fullscreen").addEventListener("click", async () => {
       try {
@@ -48,7 +41,7 @@
         else await document.documentElement.requestFullscreen();
       } catch (error) {
         const notice = document.getElementById("studio-notice");
-        notice.textContent = `Fullscreen unavailable: ${error.message}. Use browser zoom or F11 instead.`;
+        notice.textContent = `Fullscreen unavailable: ${error.message}. You can use F11.`;
         notice.classList.add("visible");
       }
     });

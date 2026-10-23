@@ -1,158 +1,205 @@
-# CT Companion MVP
+# CT Companion: three simple perspectives
 
-Browser-native CT workflow research demonstrator. One FastAPI process synchronizes
-the robot console and ACU workstation. It never connects to a scanner.
+The same clinical workflow now has three deliberately different interfaces.
+FastAPI remains the lightweight state/signaling backend. Browser-native Canvas,
+MoveNet, jsQR, speech APIs and WebRTC handle perception and media. No Python vision
+packages, native Android app, .NET migration, or scanner connection are required.
 
-## Run on Windows
+## Run
 
-Use **Python 3.12** (recommended). The specification pins Pydantic 2.9.2 and its
-native core: Python 3.14 is not supported by those pins. Do not attempt to compile
-old dependencies on 3.14. With the current Windows Python install manager, a
-compatible interpreter can be obtained with `py install 3.12`.
-
-From this directory:
+Use Python **3.12**, recommended for the specification's pinned dependencies.
+Python 3.14 is not compatible with the pinned Pydantic core. On Windows:
 
 ```powershell
+py install 3.12
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --only-binary=:all: -r requirements.txt
 .\.venv\Scripts\Activate.ps1
 python app.py
 ```
 
-If PowerShell blocks activation, use `.\.venv\Scripts\python.exe app.py` instead;
-there is no need to change machine execution policy. Once the environment is
-activated, **`python app.py` is the single launch command**.
+If activation is blocked, run `.\.venv\Scripts\python.exe app.py` directly.
+The single launch command in the activated environment is **`python app.py`**.
+Open **http://localhost:8000/studio** for the three-pane hackathon demonstration.
+Stop the server with Ctrl+C.
 
-Open **http://localhost:8000/studio** in current Chrome or Edge. Click **Start
-camera & audio** in the left panel and grant webcam permission. Keep only one robot
-view open if the device cannot share the webcam. Stop the server with Ctrl+C.
+## Which screen belongs to whom?
 
-Other views:
+| URL | Audience | Default experience |
+| --- | --- | --- |
+| `/patient` (also `/robot`) | Patient's Android tablet | One next step, large touch controls, text and optional voice, hospital route |
+| `/acu` (also `/clinician`) | Technician / clinician | Quiet status strip; no dashboard until they open it |
+| `/camera` | Hackathon / robot engineering | Laptop webcam, live tracking, QR, room ROI, pose evidence, deterministic overrides |
+| `/studio` | Screen recording | All three views, with camera-focus layout toggle |
+| `/qr` | Appointment helper | Locally generated, downloadable wristband QR |
+| `/health` | Diagnostics | Server liveness and connected-client count |
 
-- http://localhost:8000/robot - patient-side camera, HUD, route, and Q&A
-- http://localhost:8000/acu - remote technologist workstation
-- http://localhost:8000/qr - locally generated, downloadable appointment QR
-- http://localhost:8000/health - server health check
+Keep **only one patient controller and one camera controller** open per server.
+Multiple clinician observers are supported, but only the clinician who requested
+a call receives its media. Close the studio before opening standalone patient and
+camera pages, since the studio already owns those controllers. A duplicate page
+gets a visible explanation instead of competing for the webcam or call consent.
 
-The server binds to loopback only. A phone cannot reach your laptop's `localhost`.
-Save the QR SVG or photograph the QR first, display it on the phone, and hold that
-image in front of the webcam. No network exposure is needed.
+### Clinician: quiet by default
 
-## Record the complete demo
+The bottom widget shows only the current meaningful update: checking in, ready for
+invitation, on the way, arrived, or needing help. It never auto-opens, scrolls
+headlines, makes routine sounds, or requires acknowledgment for normal progress.
+This standalone prototype shows a neutral workspace rather than pretending to
+integrate into an existing scan workstation.
 
-At 1920x1080 use `/studio` for the 55% robot / 45% ACU split. Fullscreen is optional;
-use browser zoom if your display is smaller. Hotkeys work in the presenter bar,
-the robot frame, and the ACU frame. They deliberately do not intercept typing in
-text inputs or modified browser shortcuts. Every hotkey also has a robot button.
+Click the widget to expand a small assistance panel:
+
+- Invite the confirmed patient, pause or resume the simulated escort.
+- Check identity, room and positioning at a glance. Presenter evidence is labeled.
+- Acknowledge an alert without falsely clearing its underlying condition.
+- Request a patient-consented support call with optional robot camera video.
+- Send written guidance, also read aloud on the patient tablet if voice is enabled.
+- Mark a human help request handled. This does not fix room/identity/pose checks.
+- Approve the scout **simulation** only after confirmation, arrival, and checks.
+- Expand activity/FAQ detail only if needed. No KPI wall on the default screen.
+
+The invite action is for the **current confirmed demo appointment**, not a real
+queue scheduler or next-patient integration.
+
+### Patient: one step at a time
+
+1. Tap **Start & hear instructions** to enable speech output (browser gesture
+   required). All guidance is also text, with a repeat button and voice toggle.
+2. Show the wristband QR to the **robot camera**, not the tablet camera. The
+   engineering camera controller does the scanning and background continuity check.
+3. Confirm **Yes, that's me** after the appointment is read. If incorrect, request
+   help. QR recognition alone does not count as the patient's confirmation.
+4. When the clinician invites them, see a simple hospital layout and a moving
+   location marker. The route is a **50-second simulation**, not real robot motion.
+5. At arrival, see reassuring preparation text and a play/pause animated positioning
+   illustration. The illustration has a text description and spoken equivalent.
+
+Larger text, high-contrast text, 52px-or-larger patient controls, visible keyboard
+focus, labels, dialogs, screen-reader updates, and reduced-motion support are
+included. No tracking boxes, model scores, debug buttons or telemetry are shown to
+the patient. “I need help” and written communication are available before identity
+verification; clinical FAQs are gated by verified identity.
+
+Identity loss pauses the escort and hides clinical details. The patient must
+confirm again after identity is restored. A staff resume is required after a
+pause: the simulation never resumes on its own.
+
+## Real remote assistance, with explicit consent
+
+Use headphones for the single-laptop demo to avoid speaker/microphone feedback.
+
+1. In the camera lab, click **Start robot camera** and allow the webcam.
+2. In the clinician panel, click **Request live support** and allow the microphone.
+   No peer connection or transmitted media begins while the request is pending.
+3. On the patient tablet, choose **Accept call**, or decline and use messages.
+   **Camera sharing is unchecked by default** and separately optional.
+4. On acceptance, browser-to-browser WebRTC carries two-way audio between clinician
+   and patient. If selected, a second connection carries the robot's live camera
+   to the clinician. The camera controller does not capture another microphone.
+5. Either participant can end the call. Patient and clinician can mute their own
+   microphone. Ending/resetting/disconnecting closes peers and stops support tracks.
+   The camera's original tracking stream is not stopped by ending a support call.
+
+FastAPI relays **signaling only**. It binds messages to the active call ID, epoch
+and selected participants; unconsented camera signaling is rejected. Requests
+expire after 45 seconds without consent. Call setup has a 20-second connection
+timeout and explicit error feedback. Media is not recorded or stored.
+
+There are **no third-party STUN/TURN services**. The demo targets one laptop or
+peers on a directly reachable local network. Restricted networks may require a
+separately provisioned TURN deployment; that is not silently worked around.
+Video failure does not claim a live image; written support remains available.
+If browser autoplay is blocked, use **Enable call sound**.
+
+Calls are **not automatically captioned**. Typed two-way messages are the reliable
+hearing-accessible alternative, separate from the browser's FAQ speech recognition.
+Browser speech recognition may contact the browser provider's online service;
+use only the synthetic demo patient and non-sensitive questions.
+
+## Android and multiple devices
+
+The patient interface is responsive browser HTML and works with Android Chrome;
+no app install is needed. The laptop camera and patient tablet are independent
+controllers connected to the same server.
+
+`localhost` on a phone/tablet refers to that device, **not** the laptop. Real media
+capture requires a secure context: laptop localhost for a local demo, or a trusted
+**HTTPS/WSS** deployment for other devices. Do not disable browser security checks.
+An administrator can explicitly set `CT_HOST` for a controlled network deployment
+and put the service behind a trusted HTTPS reverse proxy; loopback is the default.
+Do not expose this unauthenticated research prototype to the Internet or a clinical
+network. There is no authentication, patient scheduling or production authorization.
+
+## Camera lab and demo controls
+
+MoveNet MultiPose, jsQR, background color-signature continuity, Canvas room
+difference/connected-component boxes, simulated LiDAR and live arm geometry remain
+in [vision_engine.js](static/vision_engine.js).
 
 | Key | Action |
 | --- | --- |
-| `0` | Toggle simulated LiDAR / human awareness |
-| `1` | Verify Sid, anchor a color signature if available, show route, speak welcome |
-| `2` | Identity mismatch / privacy pause |
-| `Q` | Submit the contrast question through the same backend as microphone input |
-| `B` | Capture actual clean camera baseline; explicitly simulated if no camera |
-| `3` | Force foreign-object alert |
-| `4` | Force room clear |
-| `5` | Show arms-down mismatch and start live pose evaluation |
-| `6` | Force positioning verified |
-| `R` | Reset all shared states, metrics, logs, and local evidence |
+| `0` | Simulated LiDAR / RGB human awareness |
+| `1` | Force wristband recognition for Sid |
+| `2` | Identity mismatch |
+| `Q` | Submit contrast FAQ |
+| `B` | Capture clean room baseline (explicitly simulated without camera) |
+| `3` / `4` | Foreign object / room clear |
+| `5` / `6` | Start live arm check with arms-down cue / force arms-up pass |
+| `R` | Reset workflow, confirmations, route, logs, call and metrics |
 
-Suggested sequence: `R`, `0`, `1`, `Q`, `2`, `1`, `B`, `3`, remotely acknowledge,
-`4`, `5`, `6`, then **Approve & Initiate CT Scan** at the ACU. The synchronized
-banner says **Technologist Approved Remotely - Initiating Scout Scan** and
-explicitly labels the action as a simulation.
+Additional labeled buttons simulate patient confirmation, dispatch, arrival and
+help requests for recording. These are only in the camera lab, never on the
+patient interface. All original hotkeys retain equivalent buttons. Hotkeys do not
+intercept text input or browser shortcuts. Use the camera pane or studio header
+for the recording shortcuts.
 
-Identity, room, and verified-pose overrides latch independently so a noisy camera
-cannot undo a recording cue. **Resume live inputs** releases all overrides.
-`5` releases the pose latch; `B` releases the room latch when a camera is active.
-A latched identity mismatch requires `1` or Resume live inputs. A live mismatch
-recovers only after a single matching signature is seen consistently.
+Suggested recording:
 
-Approval is enforced by the server, not just by a disabled button. All three
-checks must be green. A subsequent mismatch or object alert revokes approval.
-Acknowledging an alert does not clear its underlying condition.
+1. Studio: start robot camera; patient: enable spoken guidance.
+2. Camera: `1` (or real QR); patient: **Yes, that's me**.
+3. Clinician: open widget, **Invite patient to CT 2**, then minimize.
+4. Patient: map advances; clinician: quiet “on the way” status.
+5. Camera: **Arrive now**, `B`, `3`; clinician: open widget, acknowledge warning.
+6. Patient: **I need help**; clinician: request support. Patient accepts, optionally
+   shares camera, and both can speak or exchange written messages.
+7. End call; clinician: mark help handled. Camera: `4`, `5`, physically raise arms
+   or use `6`. Clinician: approve scout simulation.
 
-## Live perception
+MoveNet gets a four-second initialization deadline. If network/WebGL/model loading
+fails, Canvas motion tracking and labeled deterministic skeleton overrides remain
+usable. If jsQR is unavailable, use `1`. Local CSS has no CDN dependency.
+Keep the camera page visible: browser background throttling can pause perception;
+camera loss, hidden camera view, or last-controller disconnect invalidates live
+evidence. Explicit presenter evidence remains labeled as simulated.
 
-- Webcam frames, color signatures, and pose keypoints remain in the robot browser.
-  No images or biometric templates are sent to Python.
-- jsQR samples every 150 ms and accepts
-  `{"patient":"Sid","exam":"Abdominal CT"}`. The QR helper generates this exact
-  payload without any QR service or additional Python dependency.
-- MoveNet MultiPose Lightning provides 17 keypoints and multiple-person detection.
-  Shoulder/nose-derived normalized RGB histograms and centers provide a **crude
-  continuity heuristic, not biometric identity authentication**. Loss of evidence
-  pauses clinical answers. Verify again when necessary.
-- The fixed gantry ROI is the cyan rectangle on the right of the video. Keep the
-  camera fixed, capture a genuinely clean baseline with `B`, and place/remove an
-  object inside that rectangle. Brightness-normalized differences, edge changes,
-  connected-component bounding boxes, and temporal debouncing drive alerts.
-  Changes anywhere else are not an exhaustive room inspection.
-- `5` starts arms evaluation. Keep nose, shoulders, and wrists visible.
-  Both wrists above their respective shoulders is the passing geometry.
-  Low-confidence or missing keypoints are unknown, never a live pass.
-- The 8-reference display is illustrative. A single webcam **cannot validate
-  head-first/supine orientation**. The specified **98% match** is a labeled demo
-  score, not a measured clinical accuracy or model confidence.
-- Simulated LiDAR renders image edges and person boxes, not measured depth.
-  The 1.4m obstacle label is simulated.
+Capture a clean baseline with the camera stationary, then put an object in the
+cyan ROI on the right. Single-camera color continuity is **not biometric
+authentication**; arms geometry cannot establish head-first/supine orientation.
+The specified 98% match and 1.4 m labels are illustrative, not measured values.
+All demonstrations need an operator; nothing here authorizes actual patient
+movement or scanner operation.
 
-## Offline, permissions, and degraded operation
+## Clinical boundaries and validation
 
-Local CSS makes the interface independent of Tailwind availability. JavaScript
-vision assets are fetched from jsDelivr; MoveNet also downloads model weights.
-The **entire MoveNet initialization has a four-second deadline**. If a CDN, WebGL,
-or the model is unavailable/slow, Canvas motion/centroid tracking and the labeled
-presenter skeleton take over without blocking the animation loop. Animation uses
-`requestAnimationFrame`; the HUD displays actual FPS, not a guaranteed 60 FPS.
-Canvas fallback does not claim reliable person counting or live arm recognition.
-If jsQR is unavailable, use `1`. No heavy Python vision packages are needed.
-
-Camera denial is visible and leaves all deterministic controls functional.
-Camera access requires localhost or HTTPS. Microphone speech recognition depends
-on browser support and may use the browser vendor's online speech service; use
-only the synthetic demo patient and non-sensitive questions. Type or press `Q`
-when recognition is unsupported/offline. TTS requires a user gesture and installed
-voices; click Start camera & audio or toggle Voice on. Speech errors remain visible.
-
-WebSocket reconnect uses capped backoff and resynchronizes from the authoritative
-server snapshot. Actions while offline are rejected, not queued/replayed. A
-reloaded robot retains override labels but cannot restore camera pixel baselines
-or signature data; recapture them for live use. Camera loss, a hidden camera view,
-stale pose estimates, or disconnection of the last robot invalidate applicable live
-evidence rather than preserving a misleading green check. Explicitly labeled
-presenter overrides remain available.
-
-## Clinical Q&A and boundaries
-
-The deterministic corpus in [app.py](app.py) covers contrast sensations,
-preparation instructions, removable metal, positioning, and the demonstration
-route. Each resolved response includes an auditable reference ID. Every resolved
-FAQ adds one estimated prevented interruption and 1.5 estimated minutes saved.
-Unknown, symptomatic, medication, and individualized questions are escalated
-without incrementing those metrics. Identity mismatch blocks Q&A server-side.
-The demo corpus is fixed, not an externally clinically approved protocol.
-No OpenAI key, optional remote model, or patient-data transfer is used.
-
-All state is in memory and resets when the process restarts. Event and Q&A history
-are bounded. There is no clinical data persistence, authentication, role security,
-or real-device integration; do not expose this server beyond the local laptop.
-The `role` query parameter separates UI behavior, not authenticated users.
-
-## Validation
+The fixed, inspectable FAQ corpus is a demo corpus, not an externally approved
+clinical protocol. Unknown/personal-risk/symptom questions go to staff and do not
+increase the estimated saved-time metrics. No remote language model is used.
+All workflow data is in memory and resets when the server restarts.
 
 ```powershell
 python -m py_compile app.py
+python -m unittest discover -s tests -v
 node --check static\shared_ws.js
 node --check static\vision_engine.js
+node --check static\experience.js
+node --check static\assistance.js
 ```
 
-After launch, check `/health`, verify both views update together, confirm approval
-is blocked until all checks pass, and confirm `2` pauses questions and revokes an
-approved scout simulation. Reset clears all KPI totals. Local WebSocket
-propagation targets <20 ms; actual latency depends on host load and browser
-scheduling, so it is not a guaranteed real-time safety property.
+Browser checks should include small-tablet layout, 200% zoom / larger text, keyboard
+dialog controls, reduced motion, offline state, denied media permissions, real
+WebRTC tracks with consent and without camera consent, end-call cleanup, and
+three-view synchronization. Measured local latency is not a hard real-time guarantee.
 
 **Research Prototype — Neither room readiness nor positioning check is a
 validated clinical safety system.**
