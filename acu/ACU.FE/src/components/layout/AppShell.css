@@ -1,0 +1,302 @@
+/* =========================================================
+   AppShell — top bar, content area, navigation, notifications.
+   Mobile-first; bottom nav on phones, top tabs on tablet+.
+
+   Contents
+   --------
+   1. App shell grid
+   2. Top bar
+   3. Top tabs (tablet/desktop)
+   4. Main content area
+   5. Bottom nav (mobile)
+   6. Offline banner
+   7. Toast
+   ========================================================= */
+
+
+/* =========================================================
+   1. APP SHELL GRID
+   --------------------------------------------------------- */
+
+.app-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+
+/* =========================================================
+   2. TOP BAR
+   --------------------------------------------------------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3);
+  height: calc(var(--topbar-h) + var(--safe-top));
+  padding: var(--safe-top) var(--space-4) 0;
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: var(--shadow-sm);
+}
+
+.topbar-brand {
+  display: flex; align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.topbar-logo {
+  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--on-brand);
+}
+.topbar-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Freshness indicator on the right side of the top bar.
+   Two variants:
+   - .topbar-live       — quiet green pill shown while polling is healthy.
+   - .topbar-status-stale — amber badge shown only when the server is offline,
+                            with a ticking "Last updated X ago" timestamp. */
+.topbar-live {
+  display: inline-flex; align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-pill);
+  color: var(--on-brand);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.topbar-live-dot {
+  width: 8px; height: 8px;
+  border-radius: var(--radius-pill);
+  background: #4ade80;
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+  animation: topbar-live-pulse 1.8s ease-out infinite;
+}
+@keyframes topbar-live-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(74, 222, 128, 0.7); }
+  70%  { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(74, 222, 128, 0); }
+}
+
+.topbar-offline-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  color: #ffd54f;
+  animation: topbar-offline-pulse 1.6s ease-in-out infinite;
+}
+@keyframes topbar-offline-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+
+/* =========================================================
+   3. TOP TABS (tablet / desktop)
+   --------------------------------------------------------- */
+
+.nav-tabs {
+  display: none;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-5);
+  position: sticky;
+  top: calc(var(--topbar-h) + var(--safe-top));
+  z-index: calc(var(--z-topbar) - 1);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
+}
+.nav-tab {
+  display: inline-flex; align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.nav-tab:hover { color: var(--text-primary); }
+.nav-tab.active {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+.nav-tab .badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
+.nav-tab .badge.neutral {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+
+@media (min-width: 768px) {
+  .nav-tabs { display: flex; }
+}
+
+
+/* =========================================================
+   4. MAIN CONTENT AREA
+   --------------------------------------------------------- */
+
+.main {
+  width: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4)
+           calc(var(--bottombar-h) + var(--safe-bottom) + var(--space-5));
+}
+@media (min-width: 768px) {
+  .main { padding: var(--space-6); }
+}
+
+
+/* =========================================================
+   5. BOTTOM NAV (mobile)
+   --------------------------------------------------------- */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: var(--z-tabbar);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding-bottom: var(--safe-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -1px 12px rgba(15, 28, 36, 0.05);
+}
+.bottom-nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative;
+  gap: 2px;
+  min-height: var(--bottombar-h);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  transition: color var(--t-fast);
+}
+.bottom-nav-item .icon { font-size: 22px; line-height: 0; }
+.bottom-nav-item.active { color: var(--brand); }
+.bottom-nav-item.active::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  width: 32px; height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+}
+.bottom-nav-item .badge {
+  position: absolute;
+  top: 4px;
+  right: calc(50% - 22px);
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 0.65rem;
+  font-weight: var(--fw-bold);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.bottom-nav-item .badge.neutral {
+  background: var(--neutral-300);
+  color: var(--text-primary);
+}
+
+@media (min-width: 768px) {
+  .bottom-nav { display: none; }
+  .main       { padding-bottom: var(--space-6); }
+}
+
+
+/* =========================================================
+   6. OFFLINE BANNER
+   --------------------------------------------------------- */
+
+.offline-banner {
+  display: flex; align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-bottom: 1px solid var(--warning-border);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+
+/* =========================================================
+   7. TOAST
+   --------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--bottombar-h) + var(--safe-bottom) + var(--space-4));
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: inline-flex; align-items: center;
+  gap: var(--space-2);
+  max-width: min(90vw, 480px);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--neutral-900);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  box-shadow: var(--shadow-md);
+  animation: toast-in 200ms var(--ease-out);
+}
+.toast.success { background: var(--success); }
+.toast.error   { background: var(--danger); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (min-width: 768px) {
+  .toast {
+    top: calc(var(--topbar-h) + var(--safe-top) + var(--space-4));
+    right: var(--space-5);
+    bottom: auto;
+    left: auto;
+    transform: none;
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}

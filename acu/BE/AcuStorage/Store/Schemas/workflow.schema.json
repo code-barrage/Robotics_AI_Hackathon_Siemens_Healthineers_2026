@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["Workflows"],
+  "properties": {
+    "Workflows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["WorkflowID", "WorkflowName", "RobotId", "Steps"],
+        "properties": {
+          "WorkflowID": { "type": "string" },
+          "WorkflowName": { "type": "string" },
+          "Description": { "type": "string" },
+          "RobotId": { "type": "string" },
+          "Steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["StepId", "ScreenId", "Title"],
+              "properties": {
+                "StepId": { "type": "string" },
+                "ScreenId":{ "type": "string" },
+                "Title": { "type": "string" },
+                "TTS": { "type": "string" },
+                "StartDestinationName": { "type": "string" },
+                "NextDestinationName": { "type": "string" },
+                "Video": { "type": "array", "items": { "$ref": "#/definitions/Media" } },
+                "Audio": { "type": "array", "items": { "$ref": "#/definitions/Media" } },
+                "Image": { "type": "array", "items": { "$ref": "#/definitions/Media" } },
+                "Buttons": { "$ref": "#/definitions/Buttons" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Button": {
+      "type": "object",
+      "properties": {
+        "Label": { "type": "string" },
+        "Action": { "enum": ["Next", "Previous"] }
+      }
+    },
+    "Buttons": {
+      "type": "object",
+      "required": ["Yes", "No"],
+      "properties": {
+        "Yes": { "$ref": "#/definitions/Button" },
+        "No": { "$ref": "#/definitions/Button" }
+      }
+    },
+    "Media": {
+      "type": "object",
+      "properties": {
+        "VideoPath": { "type": "string" },
+        "AudioPath": { "type": "string" },
+        "ImagePath": { "type": "string" },
+        "TTS": { "type": "string" },
+        "Buttons": { "$ref": "#/definitions/Buttons" }
+      }
+    }
+  }
+}

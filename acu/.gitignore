@@ -1,0 +1,59 @@
+# ── .NET build output ─────────────────────────────────────
+**/publish/
+**/bin/
+**/obj/
+
+# ── Build & Archive artifacts ─────────────────────────────
+*.zip
+*.apk
+*.aab
+*.tar
+
+# ── PDF exports ──────────────────────────────────────────
+*.pdf
+
+# ── Extra README files ────────────────────────────────────
+README_SHORT.md
+BACKEND_CODE_EXPLAINED.md
+
+# ── Node.js ───────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+.npm
+Robot.Pwa.App/test-results/
+Robot.Pwa.App/playwright-report/
+
+# ── Go ────────────────────────────────────────────────────
+BE/BizLogic/docs/
+*.exe
+*.test
+*.out
+
+# ── Docker ────────────────────────────────────────────────
+.dockerignore
+
+# ── OS files ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor ────────────────────────────────────────────────
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+# ── dependencies ────────────────────────────────────────────────
+bin/
+obj/
+# ── acu images ────────────────────────────────────────────────
+acu-release*/
+
+
+#--- tests pwa app-------
+Robot.Pwa.App/test-results
+Robot.Pwa.App/test-results-settings
+Robot.Pwa.App/tests
+doc/Robot-PWA-Android-change-readme.md
+doc/Robot-PWA-non-Android-change-readme.md
+doc/BE-ACUFE-ApiGateway-change-readme.md

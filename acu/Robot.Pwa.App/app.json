@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Robot PWA",
+    "slug": "robot-pwa-app",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "scheme": "robotpwa",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.acu.robotpwa",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "CHANGE_WIFI_MULTICAST_STATE",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_VIDEO"
+      ],
+      "usesCleartextTraffic": true
+    }
+  }
+}

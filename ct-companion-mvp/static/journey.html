@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fbfbfd">
+  <title>CT Companion</title>
+  <link rel="stylesheet" href="/static/journey.css">
+</head>
+<body>
+  <header class="top">
+    <ol class="steps" id="steps" aria-label="Your visit">
+      <li data-step="0"><span class="dot" aria-hidden="true"></span><span data-t="stepCheck">Check in</span></li>
+      <li data-step="1"><span class="dot" aria-hidden="true"></span><span data-t="stepWalk">Walk</span></li>
+      <li data-step="2"><span class="dot" aria-hidden="true"></span><span data-t="stepRelax">Relax</span></li>
+      <li data-step="3"><span class="dot" aria-hidden="true"></span><span data-t="stepPrepare">Prepare</span></li>
+      <li data-step="4"><span class="dot" aria-hidden="true"></span><span data-t="stepScan">Scan</span></li>
+    </ol>
+  </header>
+
+  <aside class="message" id="message" role="status" hidden>
+    <span class="message-label" data-t="fromTeam">From your care team</span>
+    <p id="message-text"></p>
+  </aside>
+
+  <main class="stage" aria-live="polite">
+    <!-- Find: the robot notices someone nearby. -->
+    <section class="scene" id="scene-welcome" hidden>
+      <div class="visual"><div class="orb" aria-hidden="true"><span></span></div></div>
+      <div class="copy">
+        <h1 tabindex="-1" data-t="welcomeTitle">Hello.</h1>
+        <p class="lead" data-t="welcomeLead">I'm your CT companion. I'll take you to your scan and stay with you.</p>
+        <div class="actions"><button class="primary" id="begin" data-t="begin">Begin</button></div>
+      </div>
+    </section>
+
+    <!-- Identify: wristband QR, read locally. -->
+    <section class="scene" id="scene-identify" hidden>
+      <div class="visual">
+        <div class="viewfinder" aria-hidden="true">
+          <video id="camera" playsinline muted></video>
+          <img id="host-frame" alt="" hidden>
+          <div class="frame"><div class="scanline"></div></div>
+        </div>
+      </div>
+      <div class="copy">
+        <h1 tabindex="-1" data-t="identifyTitle">Show your wristband.</h1>
+        <p class="lead" id="identify-lead" aria-live="polite"></p>
+        <p class="hint" id="attempts"></p>
+        <div class="actions"><button class="quiet" data-help data-t="noWristband">I don't have a wristband</button></div>
+      </div>
+    </section>
+
+    <!-- Confirm: the patient confirms it's them. -->
+    <section class="scene" id="scene-confirm" hidden>
+      <div class="visual"><div class="avatar" id="initial" aria-hidden="true"></div></div>
+      <div class="copy">
+        <h1 tabindex="-1" id="confirm-title"></h1>
+        <p class="lead" id="confirm-lead"></p>
+        <div class="actions">
+          <button class="primary" id="confirm-yes" data-t="yesMe">Yes, that's me</button>
+          <button class="quiet" id="confirm-no" data-t="notMe">No, that's not me</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Inform: three short cards. -->
+    <section class="scene" id="scene-inform" hidden>
+      <div class="visual">
+        <div class="card-icon" id="inform-icon" aria-hidden="true"></div>
+        <div class="pager" id="inform-pager" aria-hidden="true"></div>
+      </div>
+      <div class="copy">
+        <h1 tabindex="-1" id="inform-title"></h1>
+        <p class="lead" id="inform-lead"></p>
+        <div class="actions">
+          <button class="primary" id="inform-next" data-t="next">Continue</button>
+          <button class="quiet" id="inform-back" data-t="back" hidden>Back</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Guide: walking with the robot. -->
+    <section class="scene" id="scene-guide" hidden>
+      <div class="visual">
+        <svg class="route" id="route-svg" viewBox="0 0 640 220" role="img" aria-labelledby="route-title">
+          <title id="route-title"></title>
+          <path class="route-base" d="M40 170 C 180 170, 200 60, 330 60 S 480 150, 580 90"/>
+          <path class="route-progress" id="route-progress" pathLength="100" stroke-dasharray="0 100" d="M40 170 C 180 170, 200 60, 330 60 S 480 150, 580 90"/>
+          <circle class="route-start" cx="40" cy="170" r="10"/>
+          <g class="route-end"><circle cx="580" cy="90" r="30"/><text x="580" y="96" text-anchor="middle">CT</text></g>
+          <circle class="route-dot" id="route-dot" cx="40" cy="170" r="16"/>
+        </svg>
+        <p class="pill" id="nav-status" hidden></p>
+      </div>
+      <div class="copy">
+        <h1 tabindex="-1" id="guide-title"></h1>
+        <p class="lead" id="guide-lead"></p>
+        <div class="actions"><button class="primary" id="guide-toggle"></button></div>
+      </div>
+    </section>
+
+    <!-- Wait: something calm to do. -->
+    <section class="scene" id="scene-wait" hidden>
+      <div id="wait-home" class="wait-home">
+        <h1 tabindex="-1" data-t="waitTitle">Please take a seat.</h1>
+        <p class="lead" data-t="waitLead">Your technologist will come for you soon. Here's something while you wait.</p>
+        <div class="tiles">
+          <button class="tile" data-panel="breathe"><span class="tile-icon breathe-icon" aria-hidden="true"></span><span data-t="tileBreathe">Breathe with me</span></button>
+          <button class="tile" data-panel="calm"><span class="tile-icon calm-icon" aria-hidden="true"></span><span data-t="tileCalm">A calm view</span></button>
+          <button class="tile" data-panel="facts"><span class="tile-icon facts-icon" aria-hidden="true"></span><span data-t="tileFacts">Did you know?</span></button>
+          <button class="tile" data-panel="ask"><span class="tile-icon ask-icon" aria-hidden="true"></span><span data-t="tileAsk">Ask a question</span></button>
+        </div>
+      </div>
+      <div class="panel" id="panel-breathe" hidden>
+        <div class="visual"><div class="breath" aria-hidden="true"><span></span></div></div>
+        <div class="copy">
+          <h1 tabindex="-1" id="breath-word" aria-live="polite"></h1>
+          <p class="lead" data-t="breatheLead"></p>
+        </div>
+      </div>
+      <div class="panel" id="panel-calm" hidden>
+        <div class="visual"><div class="calm" aria-hidden="true"><span class="sun"></span><span class="wave w1"></span><span class="wave w2"></span><span class="wave w3"></span></div></div>
+        <div class="copy">
+          <h1 tabindex="-1" data-t="calmTitle"></h1>
+          <p class="lead" data-t="calmLead"></p>
+        </div>
+      </div>
+      <div class="panel" id="panel-facts" hidden>
+        <div class="visual"><div class="card-icon facts-big" aria-hidden="true"></div></div>
+        <div class="copy">
+          <h1 tabindex="-1" data-t="factsTitle"></h1>
+          <p class="lead" id="fact-text" aria-live="polite"></p>
+          <div class="actions"><button class="primary" id="fact-next" data-t="anotherFact"></button></div>
+        </div>
+      </div>
+      <div class="panel panel-wide" id="panel-ask" hidden>
+        <h1 tabindex="-1" data-t="askTitle"></h1>
+        <div class="chips" id="chips"></div>
+        <p class="answer" id="answer" aria-live="polite"></p>
+      </div>
+      <div class="actions" id="panel-back" hidden><button class="quiet" id="back-home" data-t="back">Back</button></div>
+    </section>
+
+    <!-- Prepare: how to lie on the table. -->
+    <section class="scene" id="scene-prepare" hidden>
+      <div class="visual">
+        <svg class="pose" id="pose-svg" viewBox="0 0 640 230" role="img" aria-labelledby="pose-title">
+          <title id="pose-title"></title>
+          <rect class="table-base" x="200" y="186" width="260" height="30" rx="8"/>
+          <rect class="table" x="90" y="168" width="470" height="18" rx="9"/>
+          <g class="gantry"><circle r="92"/><circle class="bore" r="54"/></g>
+          <g class="figure" id="figure">
+            <circle class="head" cx="0" cy="0" r="20"/>
+            <circle class="face-mark" cx="-2" cy="-14" r="4"/>
+            <rect class="body" x="22" y="-15" width="150" height="30" rx="15"/>
+            <rect class="leg" x="166" y="-12" width="150" height="24" rx="12"/>
+            <g class="arms"><rect class="arm" x="24" y="-6" width="110" height="12" rx="6"/></g>
+          </g>
+        </svg>
+        <p class="pill" id="pose-status" role="status" hidden></p>
+      </div>
+      <div class="copy">
+        <h1 tabindex="-1" id="prepare-title"></h1>
+        <p class="lead" id="prepare-lead"></p>
+      </div>
+    </section>
+
+    <!-- Handoff: done. -->
+    <section class="scene" id="scene-handoff" hidden>
+      <div class="visual"><div class="check" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M12 25l8 8 16-17"/></svg></div></div>
+      <div class="copy">
+        <h1 tabindex="-1" id="handoff-title"></h1>
+        <p class="lead" data-t="handoffLead"></p>
+        <div class="actions"><button class="primary" id="finish" data-t="finish">Finish</button></div>
+      </div>
+    </section>
+
+    <!-- Staff: identity could not be verified. -->
+    <section class="scene" id="scene-staff" hidden>
+      <div class="visual"><div class="card-icon staff-icon" aria-hidden="true"></div></div>
+      <div class="copy">
+        <h1 tabindex="-1" data-t="staffTitle"></h1>
+        <p class="lead" data-t="staffLead"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bottom">
+    <button class="help" id="help" data-help><span class="help-icon" aria-hidden="true">?</span><span data-t="help">Help</span></button>
+    <p class="fine"><span id="privacy" data-t="privacy"></span><span class="link" id="link" role="status"></span></p>
+  </footer>
+
+  <div class="sheet" id="help-sheet" role="alertdialog" aria-modal="true" aria-labelledby="help-title" hidden>
+    <div class="sheet-card">
+      <div class="card-icon icon-heart" aria-hidden="true"></div>
+      <h1 tabindex="-1" id="help-title" data-t="helpTitle">Help is on the way.</h1>
+      <p class="lead" data-t="helpLead"></p>
+      <div class="actions"><button class="quiet" id="help-cancel" data-t="helpCancel">I'm okay now</button></div>
+    </div>
+  </div>
+  <p class="toast" id="toast" role="status" hidden></p>
+
+  <script src="/static/journey.js"></script>
+</body>
+</html>

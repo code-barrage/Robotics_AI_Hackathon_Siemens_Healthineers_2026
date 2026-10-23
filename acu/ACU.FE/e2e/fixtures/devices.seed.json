@@ -1,0 +1,34 @@
+{
+  "req-robot-001": {
+    "deviceId": "req-robot-001",
+    "name": "Request Robot 1",
+    "ip": "192.168.1.31",
+    "mac": "AA:BB:CC:11:22:31",
+    "firmware": "v1.0.0",
+    "registeredAt": "2026-09-28T00:00:00Z",
+    "status": "pending",
+    "lastSeen": "",
+    "online": false,
+    "statusData": null,
+    "instructions": "",
+    "recentEvents": [],
+    "destinations": []
+  },
+  "approved-robot-001": {
+    "deviceId": "approved-robot-001",
+    "name": "Approved Robot 1",
+    "ip": "192.168.1.41",
+    "mac": "AA:BB:CC:11:22:41",
+    "firmware": "v1.0.0",
+    "registeredAt": "2026-09-28T00:00:00Z",
+    "status": "approved",
+    "lastSeen": "2026-09-28T00:00:00Z",
+    "online": true,
+    "statusData": {
+      "event": "idle"
+    },
+    "instructions": "",
+    "recentEvents": [],
+    "destinations": []
+  }
+}

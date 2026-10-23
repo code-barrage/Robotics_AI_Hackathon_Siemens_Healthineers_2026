@@ -6,14 +6,23 @@
   <link rel="stylesheet" href="/static/styles.css">
   <script defer src="/static/shared_ws.js"></script><script defer src="/static/assistance.js"></script>
   <script defer src="/static/experience.js"></script>
+  <script defer src="/static/robot_status.js"></script>
 </head>
 <body data-role="acu" class="clinician-app">
   <a class="skip-link" href="#companion-widget">Skip to companion status</a>
   <header class="clinician-header"><div class="brand"><span class="companion-mark" aria-hidden="true">+</span>
-    <div><div class="eyebrow">Clinician workspace</div><h1>CT Room 2</h1></div></div>
+    <div><div class="eyebrow">Technician workspace</div><h1>CT Room 2</h1></div></div>
     <span id="connection" class="connection" role="status">CONNECTING</span></header>
+  <div id="robot-link" class="robot-link" role="status" aria-live="polite"></div>
   <div id="notice" class="notice" role="alert"></div>
   <main class="clinician-main">
+    <section class="panel" aria-labelledby="preparation-heading">
+      <h2 id="preparation-heading">Patient preparation</h2>
+      <p id="preparation-status" role="status">Available after the patient arrives at CT Room 2.</p>
+      <button id="start-preparation" class="primary" disabled>Start positioning &amp; preparation</button>
+      <a href="/portal#tracking" target="_top">View tracking</a>
+      <small>Prototype camera checks only. No scanner is connected.</small>
+    </section>
     <section class="quiet-workspace" aria-labelledby="quiet-title">
       <div class="quiet-orbit" aria-hidden="true"><span>+</span></div>
       <p class="eyebrow">Companion, in the background</p>

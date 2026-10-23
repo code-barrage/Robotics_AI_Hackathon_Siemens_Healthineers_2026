@@ -7,19 +7,64 @@
 <body class="studio">
   <header class="presenter-bar">
     <div><div class="eyebrow">One companion. Three perspectives.</div><h1>Simple for people. Visible for the demo.</h1></div>
-    <div class="row"><button id="layout-toggle">Focus camera lab</button><button id="fullscreen">Fullscreen</button><button data-key="r">Reset demo</button></div>
+    <div class="row"><a class="button" href="/portal" target="_blank" rel="noopener">ACU &amp; camera portal ↗</a><a class="button" href="/journey" target="_blank" rel="noopener">Open patient journey ↗</a><button id="layout-toggle">Focus camera lab</button><button id="fullscreen">Fullscreen</button><button data-key="r">Reset demo</button></div>
   </header>
+  <section class="row" aria-label="ACU robot integration" style="padding:8px 24px;gap:12px;align-items:center">
+    <strong>ACU robot</strong><span id="acu-status" role="status">Checking ACU…</span>
+    <select id="acu-device" aria-label="Robot"></select>
+    <button id="acu-install" disabled title="Normally automatic: the CT server keeps the journey assigned">Reinstall CT journey</button>
+  </section>
+  <div id="robot-link" class="robot-link" role="status" aria-live="polite"></div>
   <div id="studio-notice" class="notice" role="alert"></div>
   <main class="three-views">
-    <section class="studio-pane"><div class="pane-label">01 / Patient tablet <a href="/patient" target="_blank" rel="noopener">Standalone ↗</a></div>
-      <iframe id="patient-frame" src="/patient" title="Patient tablet" allow="microphone; autoplay"></iframe></section>
-    <section class="studio-pane"><div class="pane-label">02 / Clinician <a href="/acu" target="_blank" rel="noopener">Standalone ↗</a></div>
-      <iframe id="acu-frame" src="/acu" title="Quiet clinician workspace" allow="microphone; autoplay"></iframe></section>
-    <section class="studio-pane"><div class="pane-label">03 / Camera lab <a href="/camera" target="_blank" rel="noopener">Standalone ↗</a></div>
-      <iframe id="robot-frame" src="/camera" title="Robot camera engineering lab" allow="camera; microphone; autoplay"></iframe></section>
+    <section class="studio-pane"><div class="pane-label">01 / <span id="journey-label">Robot screen</span> <a href="/journey" target="_blank" rel="noopener">Standalone ↗</a></div>
+      <iframe id="patient-frame" src="/journey?mirror=1" title="Robot patient screen" allow="autoplay"></iframe></section>
+    <section class="studio-pane"><div class="pane-label">02 / Technician <a href="/acu" target="_blank" rel="noopener">Standalone ↗</a></div>
+      <iframe id="acu-frame" src="/acu" title="Technician workspace" allow="microphone; autoplay"></iframe></section>
+    <section class="studio-pane"><div class="pane-label">03 / Analysis <a href="/camera" target="_blank" rel="noopener">Standalone ↗</a></div>
+      <iframe id="robot-frame" src="/camera" title="Vision and tracking analysis" allow="camera; microphone; autoplay"></iframe></section>
   </main>
+  <script defer src="/static/robot_status.js"></script>
   <script>
     "use strict";
+    // Pane 01 mirrors the robot's own screen. With no robot screen for 15 s it becomes an interactive
+    // simulated journey so the demo still works; when the robot comes back it takes over again.
+    const journeyFrame = document.getElementById("patient-frame"), journeyLabel = document.getElementById("journey-label");
+    let robotSeenAt = 0, journeyMode = "mirror";
+    window.addEventListener("ct-link", ({ detail }) => {
+      if (detail.robot_screen) robotSeenAt = Date.now();
+      const want = detail.robot_screen || Date.now() - robotSeenAt < 15000 && robotSeenAt ? "mirror" : "sim";
+      if (want === journeyMode) return;
+      journeyMode = want;
+      journeyFrame.src = want === "mirror" ? "/journey?mirror=1" : "/journey";
+      journeyLabel.textContent = want === "mirror" ? "Robot screen (live)" : "Patient journey (simulated robot)";
+    }, { passive: true });
+    const acuStatus = document.getElementById("acu-status"), acuDevice = document.getElementById("acu-device"), acuInstall = document.getElementById("acu-install");
+    async function refreshAcu() {
+      try {
+        const info = await (await fetch("/api/acu-bridge/status", { cache: "no-store" })).json();
+        if (!info.reachable) { acuStatus.textContent = `ACU offline (${info.acu_url})`; acuInstall.disabled = true; return; }
+        const approved = info.devices.filter(d => d.status === "approved");
+        const selected = acuDevice.value;
+        acuDevice.replaceChildren(...approved.map(d => new Option(`${d.name} · ${d.online ? "online" : "offline"} · ${d.destinations.length} map points`, d.deviceId)));
+        if (selected) acuDevice.value = selected;
+        acuInstall.disabled = !approved.length;
+        const assigned = info.assigned_to.length ? `assigned to ${info.assigned_to.join(", ")}` : info.installed ? "installed, not assigned" : "not installed";
+        acuStatus.textContent = `Speech ${info.language} · CT journey ${assigned}`;
+      } catch (error) { acuStatus.textContent = `Bridge unavailable: ${error.message}`; }
+    }
+    acuInstall.addEventListener("click", async () => {
+      acuInstall.disabled = true;
+      try {
+        const res = await fetch("/api/acu-bridge/install", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ device_id: acuDevice.value }) });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error);
+        acuStatus.textContent = body.navigation ? "Installed with navigation." : "Installed. Add Pudu map points to enable navigation.";
+        setTimeout(refreshAcu, 2500);
+      } catch (error) { acuStatus.textContent = error.message; acuInstall.disabled = false; }
+    });
+    refreshAcu();
+    setInterval(refreshAcu, 15000);
     const camera = document.getElementById("robot-frame"), acu = document.getElementById("acu-frame");
     const forward = key => camera.contentWindow.postMessage({ type: "ct-hotkey", key }, location.origin);
     document.querySelectorAll("[data-key]").forEach(button => button.addEventListener("click", () => forward(button.dataset.key)));

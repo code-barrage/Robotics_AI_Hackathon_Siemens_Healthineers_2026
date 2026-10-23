@@ -75,9 +75,14 @@
       this.frames = 0;
       this.fpsAt = performance.now();
       this.seenEvents = new Set();
+      this.camConfig = { source: "laptop", camera: "face", fps: 6 };
       this.clearLocal();
       this.bind();
       this.loadVision();
+      fetch("/api/portal", { cache: "no-store" })
+        .then((res) => res.json())
+        .then((info) => this.applyCameraConfig(info.camera))
+        .catch(() => this.applyCameraConfig(this.camConfig));
       this.raf = requestAnimationFrame((at) => this.tick(at));
     }
     clearLocal() {
@@ -113,6 +118,9 @@
         if (/confirm I am still/.test(event.detail)) this.speak(event.detail);
       });
       $("start-camera").addEventListener("click", () => this.startCamera());
+      $("camera-source")?.addEventListener("change", (event) => this.chooseCamera({ source: event.target.value }));
+      $("camera-name")?.addEventListener("change", (event) => this.chooseCamera({ camera: event.target.value }));
+      window.addEventListener("ct-link", (event) => this.applyCameraConfig(event.detail.camera_config));
       $("toggle-audio").addEventListener("click", () => {
         this.audio = !this.audio;
         text("toggle-audio", this.audio ? "Voice: ON" : "Voice: OFF");
@@ -132,6 +140,10 @@
         }
       });
       window.addEventListener("message", (event) => {
+        if (event.origin === location.origin && event.source === parent
+            && event.data?.type === "ct-workspace-visibility" && !event.data.visible && this.stream) {
+          this.invalidateLive("Tracking view hidden. Restore Technician or Tracking for fresh live checks.");
+        }
         if (event.origin === location.origin && event.source === parent && event.data?.type === "ct-hotkey") {
           this.hotkey(event.data.key);
         }
@@ -146,6 +158,7 @@
       window.addEventListener("pagehide", () => {
         this.stopped = true;
         cancelAnimationFrame(this.raf);
+        clearTimeout(this.feed?.timer);
         this.stream?.getTracks().forEach((track) => track.stop());
         this.recognition?.abort();
         this.detector?.dispose();
@@ -194,8 +207,96 @@
         console.warn("MoveNet fallback:", error);
       }
     }
+    source() {
+      return this.camConfig.source;
+    }
+    // The portal (/portal) owns the camera choice; this screen follows it live.
+    applyCameraConfig(config) {
+      if (!config) return;
+      const next = { source: config.source, camera: config.camera || "face", fps: config.fps || 6 };
+      const same = ["source", "camera", "fps"].every((k) => this.camConfig[k] === next[k]);
+      this.camConfig = next;
+      if ($("camera-source")) $("camera-source").value = next.source;
+      if ($("camera-name")) { $("camera-name").value = next.camera; $("camera-name").disabled = next.source === "laptop"; }
+      if (same && (this.stream || this.cameraStarting)) return;
+      if (this.stream) {
+        this.stopCamera();
+        this.invalidateLive("Camera source changed. Live checks restart on the new source.");
+      }
+      this.startCamera();
+    }
+    async chooseCamera(change) {
+      const body = { ...this.camConfig, ...change };
+      try {
+        const res = await fetch("/api/portal/camera", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        this.applyCameraConfig((await res.json()).camera);
+      } catch (error) { this.ws.error(`Camera choice not saved: ${error.message}`); }
+    }
+    stopCamera() {
+      clearTimeout(this.feed?.timer);
+      this.feed = null;
+      this.feedStale = false;
+      this.stream?.getTracks().forEach((track) => track.stop());
+      this.stream = null;
+      this.video.srcObject = null;
+      this.frame = null;
+      this.poses = [];
+      $("start-camera").disabled = false;
+      text("start-camera", "Start camera");
+    }
+    // A robot camera (via the ACU camera API or the robot page's LAN relay), fed in as a normal
+    // MediaStream so every algorithm below (QR, motion, MoveNet, room ROI) runs unchanged on it.
+    async startRobotFeed() {
+      const { source, camera, fps } = this.camConfig;
+      const canvas = document.createElement("canvas");
+      canvas.width = 640; canvas.height = 480;
+      const ctx = canvas.getContext("2d");
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const stream = canvas.captureStream(15);
+      this.stream = stream;
+      this.feedStale = true;
+      this.feed = { last: 0, timer: null, source: null, count: 0, countAt: performance.now(), rate: 0 };
+      this.video.srcObject = stream;
+      this.video.play().catch(() => {});
+      $("start-camera").disabled = true;
+      text("start-camera", "Robot camera active");
+      const label = `${camera.toUpperCase()} VIA ${source === "acu" ? "ACU CAMERA API" : "LAN RELAY"}`;
+      text("camera-status", `WAITING FOR ${label}`);
+      const pull = async () => {
+        if (this.stream !== stream || this.stopped) return;
+        const startedAt = performance.now();
+        try {
+          const res = await fetch(`/api/robot-camera/${camera}/latest?via=${source}&fps=${fps}`, { cache: "no-store" });
+          if (res.ok) {
+            const bitmap = await createImageBitmap(await res.blob());
+            if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+              canvas.width = bitmap.width; canvas.height = bitmap.height;
+            }
+            ctx.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            this.feed.last = performance.now();
+            this.feed.count += 1;
+          }
+        } catch { /* robot or server briefly unavailable */ }
+        if (this.stream !== stream) return;
+        const now = performance.now();
+        if (now - this.feed.countAt >= 2000) {
+          this.feed.rate = this.feed.count * 1000 / (now - this.feed.countAt);
+          this.feed.count = 0; this.feed.countAt = now;
+        }
+        const stale = now - this.feed.last > 4000;
+        if (stale && !this.feedStale) this.invalidateLive("Robot camera stalled. Live checks paused until frames return.");
+        this.feedStale = stale;
+        text("camera-status", stale ? `WAITING FOR ${label}${source === "relay" ? " / OPEN THE CT JOURNEY ON THE ROBOT" : ""}`
+          : `${label} / ${this.feed.rate.toFixed(1)} of ${fps} FPS / IN MEMORY ONLY`);
+        this.feed.timer = setTimeout(pull, Math.max(0, 1000 / fps - (now - startedAt)));
+      };
+      pull();
+    }
     async startCamera() {
       if (this.stream || this.cameraStarting) return;
+      if (this.source() !== "laptop") { this.startRobotFeed(); return; }
       if (!navigator.mediaDevices?.getUserMedia) {
         this.ws.error("Camera API unavailable. Use localhost or HTTPS; all presenter overrides still work.");
         return;
@@ -204,16 +305,32 @@
       $("start-camera").disabled = true;
       text("camera-status", "REQUESTING CAMERA PERMISSION");
       try {
-        this.stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }, audio: false,
-        });
+        const video = { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" };
+        const wanted = new URLSearchParams(location.search).get("cam");
+        if (wanted) {
+          const probe = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+          probe.getTracks().forEach((t) => t.stop());
+          const pick = /^\d+$/.test(wanted) ? cams[Number(wanted)] : cams.find((c) => c.label.toLowerCase().includes(wanted.toLowerCase()));
+          console.info("Cameras:", cams.map((c, i) => `${i}: ${c.label}`), "using", pick?.label);
+          if (pick) { delete video.facingMode; video.deviceId = { exact: pick.deviceId }; }
+        }
+        this.stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+        if (this.source() !== "laptop") {
+          // The portal switched to a robot camera while the webcam permission prompt was open.
+          this.stream.getTracks().forEach((track) => track.stop());
+          this.stream = null;
+          this.cameraStarting = false;
+          this.startCamera();
+          return;
+        }
         this.video.srcObject = this.stream;
         await this.video.play();
         for (const track of this.stream.getVideoTracks()) {
           track.addEventListener("ended", () => this.cameraEnded());
           track.addEventListener("mute", () => this.invalidateLive("Camera temporarily unavailable."));
         }
-        text("camera-status", "CAMERA LIVE / LOCAL PROCESSING");
+        text("camera-status", "LAPTOP WEBCAM LIVE / LOCAL PROCESSING");
         text("start-camera", "Camera active");
       } catch (error) {
         this.stream?.getTracks().forEach((track) => track.stop());
@@ -391,7 +508,7 @@
         text("fps", `${Math.round(this.frames * 1000 / (at - this.fpsAt))} FPS`);
         this.frames = 0; this.fpsAt = at;
       }
-      if (!document.hidden && this.stream && this.video.readyState >= 2 &&
+      if (!document.hidden && this.stream && !this.feedStale && this.video.readyState >= 2 &&
           this.stream.getVideoTracks().some((track) => track.readyState === "live" && !track.muted) &&
           at - this.lastSample >= 150) {
         this.lastSample = at;

@@ -114,6 +114,8 @@
     $("dispatch-patient").addEventListener("click", () => ws.send("dispatch"));
     $("journey-control").addEventListener("click", () => ws.send(ws.state?.journey.status === "PAUSED" ? "resume" : "pause"));
     $("approve").addEventListener("click", () => ws.send("approve"));
+    $("start-preparation").addEventListener("click", () => ws.send("start_preparation"));
+    ws.addEventListener("offline", () => { $("start-preparation").disabled = true; });
     $("resolve-help").addEventListener("click", () => ws.send("resolve_help"));
   }
 
@@ -256,13 +258,19 @@
     if (s.journey.status === "PAUSED") return { title: "Escort paused", detail: "The patient is waiting. Review before resuming.", tone: "attention", action: "Review pause" };
     if (s.ready) return { title: "Sid is ready at CT 2", detail: "Checks complete. Review and approve the scout simulation.", tone: "ready", action: "Review & approve" };
     if (s.journey.status === "MOVING") return { title: "Sid is on the way to CT 2", detail: "Escorted from reception. No action needed.", tone: "calm", action: "View journey" };
-    if (s.journey.status === "ARRIVED") return { title: "Sid has arrived at CT 2", detail: s.pose === "MISMATCH" ? "Arms positioning needs a check. Remote help is available." : "Preparation checks in progress.", tone: s.pose === "MISMATCH" ? "attention" : "calm", action: "View preparation" };
+    if (s.journey.status === "ARRIVED") return { title: "Sid has arrived at CT 2", detail: !s.pose_active ? "Patient is waiting. Start positioning and preparation when you are ready." : s.pose === "MISMATCH" ? "Arms positioning needs a check. Remote help is available." : "Preparation checks in progress.", tone: s.pose === "MISMATCH" ? "attention" : "calm", action: "View preparation" };
     if (s.patient_confirmed) return { title: "Sid is ready to come through", detail: "Invite the patient when CT 2 is ready.", tone: "ready", action: "Invite patient" };
     if (s.patient) return { title: "Patient is checking in", detail: "Wristband read. Waiting for the patient's confirmation.", tone: "calm", action: "View journey" };
     return { title: "Companion is ready", detail: "Waiting for the patient's wristband. No action needed.", tone: "calm", action: "View journey" };
   }
 
   function clinicianView(s) {
+    $("start-preparation").disabled = !ws.connected || s.journey.status !== "ARRIVED"
+      || s.identity !== "VERIFIED" || !s.patient_confirmed || s.pose_active || s.approved;
+    set("preparation-status", s.approved ? "Patient handed over. No scanner is connected."
+      : s.pose_active ? `Positioning tracking active: ${s.pose.replaceAll("_", " ")}. Open Tracking to start or check the camera.`
+      : s.journey.status === "ARRIVED" ? "Patient has arrived and is waiting for you. Start preparation when ready."
+      : "Available after the patient arrives at CT Room 2.");
     const summary = summarize(s);
     $("companion-widget").dataset.tone = summary.tone;
     set("widget-title", summary.title); set("widget-subtitle", summary.detail);

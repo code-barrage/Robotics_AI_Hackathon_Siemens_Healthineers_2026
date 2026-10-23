@@ -1,0 +1,432 @@
+/* =========================================================
+   ACU — Shared UI primitives
+
+   Contents
+   --------
+   1.  Surfaces        — .surface-card, .card (+ sections, variants)
+   2.  Icon tiles      — .icon-tile (reusable rounded-square icon)
+   3.  Buttons         — .btn, .btn-*, .icon-btn
+   4.  Pills & dots    — .pill, .pill-*, .online-dot
+   5.  Form controls   — .field, .input, .textarea, .select
+   6.  Section heading — .section-head, .section-title, .section-subtitle
+   7.  Empty state     — .empty, .empty-icon
+   8.  Grid utilities  — .grid-cards
+   9.  Modal / sheet   — .modal-overlay, .modal, .modal-*
+   10. Filter chips    — .filter-row, .filter-chip
+   11. Meta grid       — .meta-grid, .meta-item, .meta-label, .meta-value
+   ========================================================= */
+
+
+/* =========================================================
+   1. SURFACES
+   --------------------------------------------------------- */
+
+/* Shared elevated surface used by all card-like containers.
+   Apply this together with the feature class, e.g.
+   `<div class="surface-card device-list">`. */
+.surface-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+/* Plain card primitive (used standalone, e.g. RequestsView). */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+.card.is-interactive {
+  transition: transform var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast);
+  cursor: pointer;
+}
+.card.is-interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand-200);
+}
+
+/* Card sections (used by .card in RequestsView). */
+.card-header {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.card-body {
+  padding: var(--space-4);
+}
+.card-footer {
+  display: flex; gap: var(--space-2); justify-content: flex-end;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+
+
+/* =========================================================
+   2. ICON TILES
+   --------------------------------------------------------- */
+
+/* Reusable 36×36 rounded-square brand icon container.
+   Used by device rows, workflow headers, assigned-workflow chips, etc. */
+.icon-tile {
+  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--brand-50);
+  color: var(--brand);
+}
+
+/* Larger size variant (workflow card header). */
+.icon-tile.icon-tile-lg {
+  width: 40px; height: 40px;
+}
+
+/* On-surface variant (sits on a brand-tinted background, e.g. assigned workflow). */
+.icon-tile.icon-tile-on-tint {
+  background: var(--surface);
+}
+
+
+/* =========================================================
+   3. BUTTONS
+   --------------------------------------------------------- */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--space-2);
+  padding: 0.6rem 1rem;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition: background var(--t-fast), color var(--t-fast),
+              border-color var(--t-fast), box-shadow var(--t-fast),
+              transform var(--t-fast);
+  white-space: nowrap;
+}
+.btn:disabled            { opacity: 0.55; cursor: not-allowed; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+.btn-primary                       { background: var(--brand);        color: var(--on-brand); }
+.btn-primary:hover:not(:disabled)  { background: var(--brand-hover); }
+.btn-primary:active:not(:disabled) { background: var(--brand-active); }
+
+.btn-secondary                      { background: var(--surface); color: var(--text-primary); border-color: var(--border); }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-alt); border-color: var(--border-strong); }
+
+.btn-danger                      { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #a91f1f; }
+
+.btn-danger-outline                      { background: transparent; color: var(--danger); border-color: var(--danger); }
+.btn-danger-outline:hover:not(:disabled) { background: var(--danger); color: #fff; }
+
+.btn-sm    { padding: 0.4rem 0.75rem; font-size: var(--fs-sm); border-radius: var(--radius-sm); }
+.btn-block { width: 100%; }
+
+/* Icon-only circular button. */
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--surface-alt);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.icon-btn.brand                      { color: var(--brand); border-color: rgba(236, 102, 2, 0.4); }
+.icon-btn.brand:hover:not(:disabled) { background: var(--brand-50); color: var(--brand-active); }
+
+
+/* =========================================================
+   4. PILLS & STATUS DOTS
+   --------------------------------------------------------- */
+
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.pill-neutral { background: var(--surface-sunken); color: var(--text-secondary); border-color: var(--border); }
+.pill-brand   { background: var(--brand-50);    color: var(--brand-active);   border-color: var(--brand-100); }
+.pill-success { background: var(--success-bg);  color: var(--success);        border-color: var(--success-border); }
+.pill-warning { background: var(--warning-bg);  color: var(--warning);        border-color: var(--warning-border); }
+.pill-danger  { background: var(--danger-bg);   color: var(--danger);         border-color: var(--danger-border); }
+.pill-info    { background: var(--info-bg);     color: var(--info);           border-color: var(--info-border); }
+
+.online-dot {
+  width: 8px; height: 8px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+.online-dot.online  { background: var(--success); box-shadow: 0 0 0 3px rgba(31, 138, 58, 0.18); }
+.online-dot.offline { background: var(--neutral-400); }
+
+
+/* =========================================================
+   5. FORM CONTROLS
+   --------------------------------------------------------- */
+
+.field {
+  display: flex; flex-direction: column; gap: var(--space-1);
+}
+.field-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.input, .textarea, .select {
+  font: inherit;
+  width: 100%;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.85rem;
+  outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.input:focus, .textarea:focus, .select:focus {
+  border-color: var(--brand);
+  box-shadow: var(--shadow-focus);
+}
+.textarea { resize: vertical; min-height: 80px; }
+
+
+/* =========================================================
+   6. SECTION HEADINGS
+   --------------------------------------------------------- */
+
+.section-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  flex-wrap: wrap;
+}
+.section-title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+.section-subtitle {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+
+/* =========================================================
+   7. EMPTY STATE
+   --------------------------------------------------------- */
+
+.empty {
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  color: var(--text-muted);
+}
+.empty-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--brand-50);
+  color: var(--brand);
+}
+.empty h3 {
+  margin-bottom: var(--space-1);
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+}
+
+
+/* =========================================================
+   8. GRID UTILITIES
+   --------------------------------------------------------- */
+
+.grid-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+@media (min-width: 600px) {
+  .grid-cards { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+}
+
+
+/* =========================================================
+   9. MODAL / BOTTOM SHEET
+   --------------------------------------------------------- */
+
+.modal-overlay {
+  position: fixed; inset: 0;
+  z-index: var(--z-modal);
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(15, 28, 36, 0.55);
+  backdrop-filter: blur(2px);
+  animation: overlay-in 200ms var(--ease-out);
+}
+@media (min-width: 768px) {
+  .modal-overlay { align-items: center; padding: var(--space-5); }
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  display: flex; flex-direction: column;
+  width: 100%;
+  max-width: 720px;
+  max-height: 92dvh;
+  padding-bottom: var(--safe-bottom);
+  background: var(--surface);
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  animation: sheet-in 240ms var(--ease-out);
+}
+@media (min-width: 768px) {
+  .modal {
+    border-radius: var(--radius-xl);
+    max-height: 88vh;
+  }
+}
+@keyframes sheet-in {
+  from { transform: translateY(16px); opacity: 0.6; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Mobile drag handle. */
+.modal::before {
+  content: "";
+  display: block;
+  width: 40px; height: 4px;
+  margin: var(--space-2) auto 0;
+  background: var(--neutral-300);
+  border-radius: var(--radius-pill);
+}
+@media (min-width: 768px) {
+  .modal::before { display: none; }
+}
+
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.modal-header h2 { font-size: var(--fs-md); }
+
+.modal-body {
+  flex: 1;
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.modal-footer {
+  display: flex; gap: var(--space-2); justify-content: flex-end;
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-alt);
+  border-top: 1px solid var(--border);
+}
+
+
+/* =========================================================
+   10. FILTER CHIPS (segmented selector)
+   --------------------------------------------------------- */
+
+.filter-row {
+  display: flex; flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.filter-chip {
+  display: inline-flex; align-items: center;
+  gap: var(--space-2);
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.filter-chip:hover { background: var(--surface-alt); }
+.filter-chip.active {
+  background: var(--brand-50);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.filter-chip-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
+.filter-chip.active .filter-chip-count {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+
+/* =========================================================
+   11. META GRID (key/value pairs)
+   --------------------------------------------------------- */
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3) var(--space-5);
+}
+@media (min-width: 480px) {
+  .meta-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.meta-item {
+  display: flex; flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.meta-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.meta-value {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+.meta-value.mono {
+  font-family: var(--font-mono);
+}

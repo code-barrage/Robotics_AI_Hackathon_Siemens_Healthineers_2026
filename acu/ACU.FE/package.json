@@ -1,0 +1,44 @@
+{
+  "name": "acu_ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
+  },
+  "dependencies": {
+    "@types/swagger-ui-react": "^5.18.0",
+    "axios": "^1.13.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.6.0",
+    "swagger-ui-react": "^5.18.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/react": "^16.0.1",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.5.0",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "allowScripts": {
+    "core-js-pure@3.50.0": true,
+    "tree-sitter-json@0.24.8": true,
+    "tree-sitter@0.21.1": true,
+    "tree-sitter@0.22.4": true,
+    "@scarf/scarf@1.4.0": true,
+    "@tree-sitter-grammars/tree-sitter-yaml@0.7.1": true
+  }
+}

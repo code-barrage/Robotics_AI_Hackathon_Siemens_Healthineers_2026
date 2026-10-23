@@ -341,3 +341,18 @@ summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
   *, *::before, *::after { scroll-behavior: auto !important; }
   .playing .guide-left-arm, .playing .guide-right-arm { animation: none; }
 }
+
+/* Shared robot link strip (robot_status.js) */
+.robot-link { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 24px; font-size: 12px; }
+.robot-link:empty { display: none; }
+.link-chip { padding: 3px 10px; border-radius: 999px; font-weight: 600; letter-spacing: .02em; border: 1px solid transparent; }
+.link-chip.ok { background: #e3f6ec; color: #11633a; border-color: #b6e3c9; }
+.link-chip.warn { background: #fff4dc; color: #7a5300; border-color: #f1d8a0; }
+.link-chip.bad { background: #fde8e8; color: #8a1f1f; border-color: #f2bcbc; }
+.link-note { color: #666; font-style: italic; }
+.source-pick { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.tray-cams { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 10px; }
+.tray-cams figure { margin: 0; }
+.tray-cams img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #111; border-radius: 8px; display: block; }
+.tray-cams img.stale { opacity: .35; }
+.tray-cams figcaption { font-size: 12px; color: #666; margin-top: 4px; }

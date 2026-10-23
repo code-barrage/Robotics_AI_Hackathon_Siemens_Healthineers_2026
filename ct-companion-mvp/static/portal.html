@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CT Companion | Workspace</title><link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/portal.css">
+  <script defer src="/static/robot_status.js"></script>
+  <script defer src="/static/shared_ws.js"></script>
+  <script defer src="/static/portal.js"></script>
+</head>
+<body class="portal" data-role="mirror">
+  <header class="portal-head">
+    <div>
+      <div class="eyebrow">CT companion</div>
+      <h1>One workspace, from arrival to preparation.</h1>
+    </div>
+    <nav class="portal-nav" aria-label="Screens">
+      <a href="#patient" data-section="patient">Patient</a>
+      <a href="#technician" data-section="technician">Technician</a>
+      <a href="#tracking" data-section="tracking">Tracking</a>
+      <a href="#diagnostics" data-section="diagnostics">Robot / API</a>
+      <a href="#settings" data-section="settings">Connections</a>
+    </nav>
+  </header>
+  <div id="robot-link" class="robot-link" role="status" aria-live="polite"></div>
+  <div id="portal-notice" class="notice" role="alert"></div>
+
+  <main class="portal-main">
+    <section data-workspace="patient" hidden>
+      <div class="section-head row between"><h2>Patient screen (live mirror)</h2>
+        <a href="/screens/patient" target="_blank" rel="noopener">Open interactive patient screen ↗</a></div>
+      <iframe data-screen="patient" data-src="/screens/patient?mirror=1" title="Patient journey mirror" class="workspace-frame" allow="autoplay"></iframe>
+    </section>
+    <section data-workspace="technician" hidden>
+      <iframe data-screen="technician" data-src="/screens/technician" title="Technician workspace" class="workspace-frame" allow="microphone; camera; autoplay"></iframe>
+    </section>
+    <section data-workspace="tracking" hidden>
+      <p class="muted">Positioning begins when the technician starts preparation. Tracking is also shown below the technician view while active. Allow camera access when prompted; missing evidence never passes a check.</p>
+      <iframe data-screen="tracking" data-src="/screens/tracking" title="Patient positioning and tracking" class="workspace-frame" allow="camera; microphone; autoplay"></iframe>
+    </section>
+    <section data-workspace="diagnostics" hidden>
+      <h2>Robot / API diagnostics</h2>
+      <iframe data-screen="diagnostics" data-src="/screens/diagnostics?acu=%2Facu-proxy" title="Robot telemetry, cameras and API diagnostics" class="workspace-frame"></iframe>
+      <details><summary>Workflow editor (advanced)</summary>
+        <p class="muted">Uses the same active ACU. The editor is optional and requires port 3100.</p>
+        <div class="row"><button id="dash-reload" type="button">Load / reload editor</button><a id="dash-open" target="_blank" rel="noopener">Open ↗</a></div>
+        <span id="dash-target" class="muted"></span>
+        <iframe id="dashboard" title="ACU workflow editor" class="dashboard-frame"></iframe>
+        <p id="dash-hint" class="muted" hidden>Workflow editor unavailable. Start it with <code>.\start-ct-demo.ps1</code>.</p>
+      </details>
+    </section>
+    <section data-workspace="settings" hidden>
+    <section aria-labelledby="acu-heading">
+      <div class="section-head">
+        <h2 id="acu-heading">ACU</h2>
+        <p class="muted">The CT server, every screen and the unified dashboard use the <strong>active</strong> ACU.
+          Develop and test workflows on the local ACU; switch to the hosted ACU to run them on the real robot.</p>
+      </div>
+      <div class="acu-cards">
+        <article class="acu-card" data-target="local" aria-live="polite"></article>
+        <article class="acu-card" data-target="hosted" aria-live="polite"></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="cam-heading">
+      <div class="section-head">
+        <h2 id="cam-heading">Camera feed</h2>
+        <p class="muted">Used by the Analysis screen (vision &amp; tracking). Start with the laptop webcam; switch to the
+          robot cameras from the ACU camera API when they are live. Frames are kept in memory only.</p>
+      </div>
+      <div class="cam-grid">
+        <form id="cam-form" class="cam-controls">
+          <fieldset>
+            <legend>Source</legend>
+            <label><input type="radio" name="source" value="laptop"> Laptop webcam <small>(now)</small></label>
+            <label><input type="radio" name="source" value="acu"> Robot · ACU camera API <small>(/api/acu/robots/{id}/cameras/…)</small></label>
+            <label><input type="radio" name="source" value="relay"> Robot · LAN relay <small>(robot journey page → laptop)</small></label>
+          </fieldset>
+          <fieldset>
+            <legend>Camera</legend>
+            <label><input type="radio" name="camera" value="face"> Face / front</label>
+            <label><input type="radio" name="camera" value="tray-1"> Tray 1</label>
+            <label><input type="radio" name="camera" value="tray-2"> Tray 2</label>
+          </fieldset>
+          <label class="fps">Frame rate <output id="fps-out">6</output> fps
+            <input id="fps" name="fps" type="range" min="1" max="15" step="1" value="6"></label>
+          <p id="cam-availability" class="muted"></p>
+        </form>
+        <figure class="cam-preview">
+          <video id="cam-video" autoplay muted playsinline hidden></video>
+          <canvas id="cam-canvas" width="640" height="480" hidden></canvas>
+          <figcaption><span id="cam-label">Preview</span> · <span id="cam-rate">—</span></figcaption>
+          <button id="cam-preview-toggle" type="button">Start preview</button>
+        </figure>
+      </div>
+    </section>
+
+    </section>
+  </main>
+</body>
+</html>

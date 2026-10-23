@@ -12,24 +12,45 @@
   <script data-tf-cdn type="application/x-ct-cdn" data-src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
   <script defer src="/static/shared_ws.js"></script><script defer src="/static/vision_engine.js"></script>
   <script defer src="/static/assistance.js"></script>
+  <script defer src="/static/robot_status.js"></script>
 </head>
 <body data-role="robot" class="camera-app">
-  <header class="topbar"><div><div class="eyebrow">Hackathon / engineering view only</div><h1>Robot camera lab</h1></div><span id="connection" class="connection" role="status">CONNECTING</span></header>
+  <header class="topbar"><div><div class="eyebrow">Analysis / vision &amp; tracking</div><h1>Robot camera lab</h1></div><span id="connection" class="connection" role="status">CONNECTING</span></header>
+  <div id="robot-link" class="robot-link" role="status" aria-live="polite"></div>
   <div id="notice" class="notice" role="alert"></div>
   <main class="shell stack">
-    <p class="muted">Perception runs here. Patients never see these overlays or test controls.</p>
+    <p class="muted">Perception runs here, on the robot's face camera. Patients never see these overlays or test controls.</p>
     <div class="vision">
-      <video id="camera" autoplay muted playsinline aria-label="Local robot webcam"></video>
+      <video id="camera" autoplay muted playsinline aria-label="Robot face camera"></video>
       <canvas id="hud" width="960" height="540" aria-label="Live perception: tracking, skeletal keypoints, simulated LiDAR and room ROI"></canvas>
       <div class="vision-top"><span id="mode-label" class="chip">SIMULATED LiDAR / NOT DEPTH SENSING</span><span id="fps" class="chip">0 FPS</span></div>
       <div class="vision-bottom"><span id="tracking-label" class="chip">WAITING FOR APPOINTMENT QR</span></div>
     </div>
-    <div class="row"><button id="start-camera" class="primary">Start robot camera</button><button data-key="0"><kbd>0</kbd>LiDAR / human</button><button id="live-inputs">Resume live inputs</button></div>
+    <div class="row">
+      <label class="source-pick">Camera
+        <select id="camera-source">
+          <option value="laptop">Laptop webcam</option>
+          <option value="acu">Robot · ACU camera API</option>
+          <option value="relay">Robot · LAN relay</option>
+        </select>
+        <select id="camera-name" aria-label="Robot camera">
+          <option value="face">Face / front</option>
+          <option value="tray-1">Tray 1</option>
+          <option value="tray-2">Tray 2</option>
+        </select>
+        <a href="/portal" target="_blank" rel="noopener">Portal ↗</a>
+      </label>
+      <button id="start-camera" class="primary">Start camera</button><button data-key="0"><kbd>0</kbd>LiDAR / human</button><button id="live-inputs">Resume live inputs</button>
+    </div>
+    <div class="tray-cams" aria-label="Robot tray cameras">
+      <figure><img data-tray="tray-1" alt="Robot tray 1 camera"><figcaption>Tray 1 <span data-tray-status="tray-1">—</span></figcaption></figure>
+      <figure><img data-tray="tray-2" alt="Robot tray 2 camera"><figcaption>Tray 2 <span data-tray-status="tray-2">—</span></figcaption></figure>
+    </div>
     <div class="camera-telemetry">
       <span id="camera-status">CAMERA NOT STARTED</span><span id="vision-engine">LOADING VISION / 4s DEADLINE</span>
       <span id="signature-status">NO LIVE SIGNATURE</span><span id="qr-engine">jsQR LOADING</span>
     </div>
-    <p id="engine-detail" class="muted">Camera frames stay local unless the patient consents to remote support video.</p>
+    <p id="engine-detail" class="muted">Camera source is chosen in the Portal. Robot frames travel over the hospital LAN to this laptop and are kept in memory only; nothing is recorded.</p>
     <section class="panel stack">
       <div class="panel-header"><h2>Demonstrate a scenario</h2><span id="stage" class="eyebrow">WAITING</span></div>
       <div class="scenario-group"><h3>01 / Identify &amp; inform</h3><div class="controls">

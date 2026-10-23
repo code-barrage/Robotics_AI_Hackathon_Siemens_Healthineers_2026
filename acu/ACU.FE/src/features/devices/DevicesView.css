@@ -1,0 +1,456 @@
+/* =========================================================
+   Devices feature — master/detail with mobile drawer.
+
+   Shared primitives composed from ui.css:
+   - `.surface-card` on .device-list and .device-detail
+   - `.icon-tile`    on .device-row-icon and .assigned-workflow-icon
+
+   Contents
+   --------
+   1. Master/detail grid
+   2. Device list (header + rows)
+   3. Device detail panel
+   4. Detail tabs (Workflow / About)
+   5. Detail section dividers
+   6. Assigned workflow card
+   7. Danger zone
+   8. Pending list (mobile)
+   9. Workflow destination chain
+   10. Map destinations list
+   11. Mobile drawer behaviour
+   ========================================================= */
+
+
+/* =========================================================
+   1. MASTER/DETAIL GRID
+   --------------------------------------------------------- */
+
+.devices {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+@media (min-width: 900px) {
+  .devices {
+    grid-template-columns: 320px 1fr;
+    align-items: start;
+  }
+}
+
+
+/* =========================================================
+   2. DEVICE LIST
+   (surface styling supplied by .surface-card)
+   --------------------------------------------------------- */
+
+.device-list-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+.device-list-header h3 {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+}
+
+.device-row {
+  display: flex; align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.device-row + .device-row { border-top: 1px solid var(--border); }
+.device-row:hover         { background: var(--surface-alt); }
+.device-row.selected      { background: var(--brand-50); border-left-color: var(--brand); }
+
+/* .device-row-icon inherits all visual styling from .icon-tile. */
+.device-row-info {
+  flex: 1;
+  min-width: 0;
+}
+.device-row-name {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.device-row-meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+
+/* =========================================================
+   3. DEVICE DETAIL PANEL
+   (surface styling supplied by .surface-card)
+   --------------------------------------------------------- */
+
+.device-detail-header {
+  display: flex; align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-alt) 100%);
+  border-bottom: 1px solid var(--border);
+}
+.device-detail-title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+}
+
+
+/* =========================================================
+   4. DETAIL TABS (Workflow / About)
+   --------------------------------------------------------- */
+
+.detail-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: 0 var(--space-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.detail-tab {
+  display: inline-flex; align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.detail-tab:hover { color: var(--text-primary); }
+.detail-tab.active {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+
+
+/* =========================================================
+   5. DETAIL SECTION DIVIDERS
+   --------------------------------------------------------- */
+
+.device-detail-section {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.device-detail-section:last-child { border-bottom: none; }
+.device-detail-section h4 {
+  margin-bottom: var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+
+/* =========================================================
+   6. ASSIGNED WORKFLOW CARD
+   --------------------------------------------------------- */
+
+.assigned-workflow {
+  display: flex; align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--brand-50);
+  border: 1px solid var(--brand-100);
+  border-radius: var(--radius-md);
+}
+/* .assigned-workflow-icon inherits .icon-tile (with .icon-tile-on-tint). */
+.assigned-workflow-info { flex: 1; min-width: 0; }
+.assigned-workflow-name {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+.assigned-workflow-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+
+/* =========================================================
+   7. DANGER ZONE
+   --------------------------------------------------------- */
+
+.danger-zone {
+  margin-top: var(--space-2);
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.danger-zone-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  flex-wrap: wrap;
+}
+.danger-zone-row .text {
+  display: flex; flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 200px;
+}
+.danger-zone-row .title {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.danger-zone-row .desc {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+
+/* =========================================================
+   8. PENDING LIST (mobile sheet)
+   --------------------------------------------------------- */
+
+.pending-list {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex; flex-direction: column;
+  gap: var(--space-2);
+}
+.pending-row {
+  display: flex; align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.pending-row .info { flex: 1; min-width: 0; }
+.pending-row .info .name {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.pending-row .info .meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.pending-row .actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   9. WORKFLOW DESTINATION CHAIN
+   (shown in device row to summarise assigned workflow path)
+   --------------------------------------------------------- */
+
+.workflow-chain {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.workflow-chain .arrow {
+  padding: 0 2px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.workflow-chip {
+  display: inline-flex; align-items: center;
+  gap: 3px;
+  padding: 0.15rem 0.5rem;
+  background: var(--brand-50);
+  color: var(--brand-active);
+  border: 1px solid var(--brand-100);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+
+/* =========================================================
+   10. MOBILE DRAWER BEHAVIOUR
+   --------------------------------------------------------- */
+
+/* Hide list when a device is selected on small screens. */
+@media (max-width: 899px) {
+  .devices.detail-open .device-list { display: none; }
+}
+
+/* Back-to-list affordance for the mobile detail view. */
+.detail-back {
+  display: inline-flex; align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  color: var(--brand);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+
+/* =========================================================
+   11. WORKFLOW DESTINATION PROGRESS FLOW
+   (horizontal stepper shown in the device detail workflow tab)
+   --------------------------------------------------------- */
+
+/* ── "Workflow was edited" banner ── */
+.workflow-edited-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  color: #92400e;
+  margin-bottom: var(--space-3);
+}
+.workflow-edited-banner svg { flex-shrink: 0; color: #d97706; }
+@media (prefers-color-scheme: dark) {
+  .workflow-edited-banner { background: #451a03; border-color: #92400e; color: #fde68a; }
+  .workflow-edited-banner svg { color: #fbbf24; }
+}
+
+@keyframes dest-pop {
+  0%   { transform: scale(0.65); }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1);    }
+}
+
+@keyframes dest-pulse {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(0,153,153,0.50); }
+  50%       { box-shadow: 0 0 0 7px rgba(0,153,153,0);    }
+}
+
+.dest-flow {
+  display: flex;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: var(--space-3) 0 var(--space-4);
+  scrollbar-width: none;
+}
+.dest-flow::-webkit-scrollbar { display: none; }
+
+/* Each node: dot stacked above label */
+.dest-flow-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 68px;
+  max-width: 92px;
+  flex-shrink: 0;
+}
+
+/* Horizontal connector between nodes */
+.dest-flow-connector {
+  flex: 1;
+  min-width: 16px;
+  height: 2px;
+  background: var(--border);
+  margin-top: 16px;          /* vertically centre with dot */
+  flex-shrink: 0;
+  border-radius: 1px;
+  transition: background 0.4s ease;
+}
+.dest-flow-connector.reached { background: #009999; }
+
+/* The circle dot */
+.dest-flow-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  border: 2px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  flex-shrink: 0;
+}
+
+/* Next expected event: pulse ring */
+.dest-flow-dot.active {
+  border-color: #009999;
+  color: #009999;
+  animation: dest-pulse 1.5s ease-in-out infinite;
+}
+
+/* Event received: pop green with tick */
+.dest-flow-dot.reached {
+  background: #009999;
+  border-color: #009999;
+  color: #fff;
+  animation: dest-pop 0.28s ease-out;
+}
+
+/* Final "done" node has a dashed border until completed */
+.dest-flow-dot.cap { border-style: dashed; }
+.dest-flow-dot.cap.reached { border-style: solid; }
+
+/* Labels */
+.dest-flow-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.3;
+  word-break: break-word;
+  transition: color 0.3s ease;
+  max-width: 88px;
+}
+.dest-flow-label.reached { color: #009999; font-weight: var(--fw-semibold); }
+.dest-flow-label.active  { color: #009999; }
+
+
+/* =========================================================
+   10. MAP DESTINATIONS LIST
+   --------------------------------------------------------- */
+
+.map-dest-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.map-dest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.map-dest-chip-name {
+  font-weight: var(--fw-medium, 500);
+}
+
+/* Pudu type tag shown after the name */
+.map-dest-chip-type {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--text-muted, #888);
+  background: var(--surface, #ececec);
+  border-radius: var(--radius-pill, 999px);
+  padding: 1px 6px;
+  margin-left: 2px;
+}

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup Label="Common Configuration">
+   <TargetFramework>net10.0</TargetFramework>
+	<!-- Centralized output path: ACU/bin/{Platform}/{Configuration}/{Framework} -->
+	<BaseOutputPath>$(MSBuildThisFileDirectory)..\..\bin\</BaseOutputPath>
+
+	<!-- Target platform -->
+	<Platforms>x64</Platforms>
+
+	<!-- Disable NuGet vulnerability audit warnings -->
+	<NuGetAudit>false</NuGetAudit>
+
+	<!-- Generate XML documentation for Swagger/IntelliSense -->
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+	<!-- Suppress CS1591: Missing XML comment for publicly visible type -->
+	<NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+</Project>

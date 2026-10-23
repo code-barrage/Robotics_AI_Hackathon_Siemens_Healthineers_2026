@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ec6602" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#993f01" media="(prefers-color-scheme: dark)" />
+
+    <title>Afred Control Unit</title>
+    <meta
+      name="description"
+      content="Manage and orchestrate robot devices with the Afred Control Unit."
+    />
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+    <link rel="mask-icon" href="/icon.svg" color="#ec6602" />
+
+    <!-- iOS PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Afred" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Microsoft Tile -->
+    <meta name="application-name" content="Afred" />
+    <meta name="msapplication-TileColor" content="#ec6602" />
+
+    <!-- Prevent iOS Safari from auto-linking digits/addresses -->
+    <meta name="format-detection" content="telephone=no, email=no, address=no" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Import centralized property sheet -->
+  <Import Project="..\..\_Globals\PropertySheets\Common.props" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Acu.MdnsAdvertiser</AssemblyName>
+    <RootNamespace>Acu.MdnsAdvertiser</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Cross-platform managed mDNS / DNS-SD responder (no OS tools needed). -->
+    <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
+  </ItemGroup>
+
+</Project>

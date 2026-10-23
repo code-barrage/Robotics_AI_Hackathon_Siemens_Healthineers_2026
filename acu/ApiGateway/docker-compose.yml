@@ -1,0 +1,23 @@
+services:
+  acu-api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: acu-api-gateway:latest
+    container_name: acu-api-gateway
+    ports:
+      - "3000:3000"
+    volumes:
+      # Named volume persists devices.json between restarts.
+      # To share with the Go backend, point both services at the same volume.
+      - acu-data:/data
+    environment:
+      - ASPNETCORE_URLS=http://+:4110
+      - DataPath=/data/devices.json
+      - WorkflowDataPath=/data/workflows.json
+      # Override the data path if you mount a host directory instead:
+      # - DataPath=/data/devices.json
+    restart: unless-stopped
+
+volumes:
+  acu-data:

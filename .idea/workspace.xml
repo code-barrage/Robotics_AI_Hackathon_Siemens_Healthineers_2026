@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="ca91c018-3863-463b-881a-0e0901babb0d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/ct-companion-mvp/README_RUN.md" beforeDir="false" afterPath="$PROJECT_DIR$/ct-companion-mvp/README_RUN.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ct-companion-mvp/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/ct-companion-mvp/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ct-companion-mvp/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/ct-companion-mvp/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ct-companion-mvp/static/acu.html" beforeDir="false" afterPath="$PROJECT_DIR$/ct-companion-mvp/static/acu.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ct-companion-mvp/static/robot.html" beforeDir="false" afterPath="$PROJECT_DIR$/ct-companion-mvp/static/robot.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ct-companion-mvp/static/studio.html" beforeDir="false" afterPath="$PROJECT_DIR$/ct-companion-mvp/static/studio.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ct-companion-mvp/static/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/ct-companion-mvp/static/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ct-companion-mvp/static/vision_engine.js" beforeDir="false" afterPath="$PROJECT_DIR$/ct-companion-mvp/static/vision_engine.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 0,
+  "fromUser": false
+}]]></component>
+  <component name="ProjectId" id="3L6f4wMzvMHrcQO7viOUqOkcJTr" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "CidrDebugProfileConversion": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "C:/Robotics_AI_Hackathon_Siemens_Healthineers_2026/PS_1_CT"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ca91c018-3863-463b-881a-0e0901babb0d" name="Changes" comment="" />
+      <created>1792779251742</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1792779251742</updated>
+    </task>
+    <servers />
+  </component>
+</project>

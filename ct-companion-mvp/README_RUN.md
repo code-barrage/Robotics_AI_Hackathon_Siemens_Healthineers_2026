@@ -1,11 +1,88 @@
-# CT Companion: three simple perspectives
+# CT Companion: one workspace
 
-The same clinical workflow now has three deliberately different interfaces.
-FastAPI remains the lightweight state/signaling backend. Browser-native Canvas,
-MoveNet, jsQR, speech APIs and WebRTC handle perception and media. No Python vision
-packages, native Android app, .NET migration, or scanner connection are required.
+Open **http://localhost:8000/portal**. This is the single entry point:
+
+- **Patient:** read-only live mirror; open the interactive patient screen only for a local simulation.
+- **Technician:** patient status, assistance, and **Start positioning & preparation** after confirmed arrival.
+- **Tracking:** camera-based posture/arms checks and clearly labeled demonstration overrides.
+- **Robot / API:** telemetry, camera feeds, sensors, remote control and API exploration.
+  The existing workflow editor is an optional advanced tool, loaded only on request.
+- **Connections:** choose local/hosted ACU and the camera source.
+
+The technician button activates preparation on the patient screen and opens tracking
+below the technician view. Allow camera permission when prompted. Without live camera
+evidence the pose stays **UNKNOWN**; this does not approve positioning or a scout.
+Keep the Technician or Tracking view visible for live browser inference.
+All checks remain research-prototype assistance, not validated clinical measurements.
+
+Old `/acu`, `/clinician`, `/camera`, and `/studio` bookmarks redirect into the workspace.
+`/journey`, `/patient`, and `/robot` redirect to the one patient implementation at
+`/screens/patient`, preserving robot-host and language query parameters. Robot workflow
+links therefore keep working. Open only one workspace controlling the tracking camera.
 
 ## Run
+
+### One command (robot + ACU + CT, all linked)
+
+From `PS_1_CT`:
+
+```powershell
+.\start-ct-demo.ps1                 # hosted ACU http://10.27.239.122:3000, robot 8PP076724060001, English
+.\start-ct-demo.ps1 -Language de-DE # German voice and text
+.\start-ct-demo.ps1 -Acu local      # start on the local ACU (switchable any time in the portal)
+.\start-ct-demo.ps1 -NoLocalAcu       # do not start the local ACU gateway
+```
+
+It restarts the CT server (with natural voice, robot camera relay and the automatic ACU
+link) and the optional workflow editor, then prints the workspace link. Logs go to `logs\`. Then just open the
+robot app on the KettyBot: the CT server keeps the robot approved (only `CT_ROBOT_ID`) and the
+`ct-patient-journey` workflow assigned with the current laptop URL, every 5 seconds, so there is
+no install button to press and nothing to redo after an ACU or laptop IP change.
+
+### Connections: switch ACU and camera (`http://localhost:8000/portal#settings`)
+
+The launcher starts **both** ACUs side by side: our local gateway (`http://127.0.0.1:3000`, for
+developing and testing workflows) and the hosted one (`http://10.27.239.122:3000`, which the
+real robot talks to). The portal shows both live (reachable, latency, devices, workflows, CT
+journey assignment, which ACU camera feeds exist) and makes one of them **active** with a click:
+
+- The CT server's link loop, robot camera pulls and every screen follow the active ACU.
+- Robot / API diagnostics use the same-origin `/acu-proxy` for JSON, camera MJPEG,
+  and live sensor SSE. They pause polling and close streams when their tab is hidden.
+  The optional workflow editor (`:3100`) uses Vite's proxy to the same active ACU.
+- The real robot always uses the ACU URL set in its own app settings; switching here only
+  changes what the laptop side talks to. Use the local ACU with the robot preview
+  (`-RobotPreview`) or a robot app pointed at this laptop.
+
+Camera feed for the Analysis screen: **laptop webcam** (default), **robot via ACU camera API**
+(`/api/acu/robots/{id}/cameras/{front|tray-1|tray-2}/latest`), or **robot via LAN relay**; pick
+the camera (face/front, tray 1, tray 2) and frame rate (1–15 fps). The choice is saved in
+`portal_settings.json` (env `ACU_TARGET` overrides the saved ACU) and the Analysis screen
+switches live.
+| Screen | URL | What it shows |
+| --- | --- | --- |
+| Robot tablet (patient) | opened by the robot app: `http://<laptop>:8000/journey?host=robot` | The patient journey, natural voice, robot navigation; streams its face camera to the laptop |
+| Technician | `http://localhost:8000/portal#technician` | Patient status, assistance, and preparation start |
+| Tracking | `http://localhost:8000/portal#tracking` | Vision on the selected camera, posture checks and tray feeds |
+| Robot / API | `http://localhost:8000/portal#diagnostics` | Telemetry, camera feeds, sensor readings and API tools |
+
+How the pieces connect:
+
+- **Voice**: `/api/tts` renders speech with offline Piper neural voices (`en_US-lessac-medium`,
+  `de_DE-thorsten-medium`, downloaded once to `voices\`). The robot page plays the WAV; if that
+  fails it falls back to the robot's Android TTS, then browser speech.
+- **Cameras**: the robot page relays face-camera frames to `POST /api/robot-camera/face/frames`
+  (memory only, nothing written to disk). `GET /api/robot-camera/{face|tray-1|tray-2}/latest`
+  and `/stream` serve the freshest frame, falling back to the ACU camera API
+  (`/api/acu/robots/{id}/cameras/...`) when a robot uploads there directly.
+- **Status**: `GET /api/link/status` is the single health view every screen uses.
+- **Firewall**: on a *Public* Wi-Fi profile Windows may block the robot from reaching port 8000.
+  An administrator can allow it once with
+  `New-NetFirewallRule -DisplayName 'CT companion 8000' -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow -Profile Any`.
+- **Navigation**: the robot walks only if its Pudu map has a point whose name contains "CT";
+  otherwise the walk is simulated on screen.
+
+### Manual
 
 Use Python **3.12**, recommended for the specification's pinned dependencies.
 Python 3.14 is not compatible with the pinned Pydantic core. On Windows:
@@ -20,19 +97,107 @@ python app.py
 
 If activation is blocked, run `.\.venv\Scripts\python.exe app.py` directly.
 The single launch command in the activated environment is **`python app.py`**.
-Open **http://localhost:8000/studio** for the three-pane hackathon demonstration.
+Open **http://localhost:8000/portal** for the unified workspace.
 Stop the server with Ctrl+C.
 
 ## Which screen belongs to whom?
 
 | URL | Audience | Default experience |
 | --- | --- | --- |
-| `/patient` (also `/robot`) | Patient's Android tablet | One next step, large touch controls, text and optional voice, hospital route |
-| `/acu` (also `/clinician`) | Technician / clinician | Quiet status strip; no dashboard until they open it |
-| `/camera` | Hackathon / robot engineering | Laptop webcam, live tracking, QR, room ROI, pose evidence, deterministic overrides |
-| `/studio` | Screen recording | All three views, with camera-focus layout toggle |
+| `/portal#patient` | Technician / demo observer | Read-only mirror of the patient screen |
+| `/portal#technician` | Technician / clinician | Quiet status strip, assistance and preparation controls |
+| `/portal#tracking` | Analysis / robot engineering | Selected camera, tracking, QR, room ROI and pose evidence |
+| `/portal#diagnostics` | Robot engineering | Telemetry, sensors, remote commands and optional workflow editor |
 | `/qr` | Appointment helper | Locally generated, downloadable wristband QR |
+| `/journey` | Robot touchscreen (patient) | End-to-end flow: find → identify → inform → guide → wait/entertain → prepare → hand off |
 | `/health` | Diagnostics | Server liveness and connected-client count |
+
+### Patient journey and ACU robot bridge
+
+`/journey` is a single, minimalist patient screen. Accessibility is built in
+rather than toggled: large type and 72 px targets, one action per screen,
+captions for every spoken line, high contrast, `prefers-reduced-motion` and
+`forced-colors` support. The language follows the ACU setting
+`speechLanguage` (`de-DE`/`en-US`) and falls back to the browser language.
+On the robot tablet (landscape) every scene is two columns: picture left, words
+and one action right.
+
+- **Find**: camera frame-difference presence detection wakes the welcome screen.
+- **Identify**: wristband QR (`{"patient":"Sid","exam":"Abdominal CT"}`). After
+  three wrong codes (`id_failed`), staff receive an identity alert.
+- **Inform → Guide → Wait**: three short info cards, a live route animation with
+  pause, then breathing, calm scene, facts and FAQ chips.
+- **Prepare → Hand off**: positioning guidance derived from the protocol, then the
+  technologist approves and the patient finishes the session.
+
+The journey connects as WebSocket role `journey` (one screen; the robot's has priority). The bridge
+(`acu_bridge.py`) talks to the team's ACU API Gateway at `ACU_URL` (default
+`http://127.0.0.1:3000`):
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/acu-bridge/status` | Devices, speech language, whether the workflow is installed/assigned |
+| `POST /api/acu-bridge/install` `{"device_id": "..."}` | Create/update the `ct-patient-journey` robot workflow and assign it |
+
+The link loop installs the CT journey automatically; `/api/acu-bridge/install`
+remains available for explicit installation. The installed
+workflow is a single step whose description carries the journey URL
+(`CT_PUBLIC_URL`, else `http://<laptop LAN IP>:8000/journey`). If the robot has
+no Pudu map point containing "CT", walking is simulated. ACU assignments are kept
+in memory, so reinstall after an ACU restart.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `CT_LANGUAGE` env | `en-US` | Language of `/journey` and of the workflow installed on the robot |
+| `CT_PUBLIC_URL` env | LAN IP + `CT_PORT` | Base URL the robot tablet uses to open `/journey` |
+| `/journey?lang=de` | — | Force German on one screen |
+| `/journey?cam=1`, `/camera?cam=logitech` | built-in camera | Pick a USB camera by index or label (indices are logged in the browser console) |
+| `CT_HOST` env | `127.0.0.1` | Use `0.0.0.0` so the robot tablet can open `http://<laptop-ip>:8000/journey` |
+
+### Run it on the actual KettyBot (one system, not separate parts)
+
+```
+ Laptop (same Wi-Fi as the robot)                     KettyBot tablet
+ ACU API :3000  ── assigns "ct-patient-journey" ─▶  Robot.Pwa.App (APK)
+ CT server :8000 ◀── /journey WebSocket (role=journey) ── full-screen WebView of /journey
+   ▲  hub state                                         │ bridge: speak / navigate / camera
+   │                                                    ▼
+ ACU dashboard :3100 (CT tab = staff view)          Pudu navigation, Android TTS, face camera
+```
+
+1. On the laptop: start the ACU API (`0.0.0.0:3000`) and the CT server with
+   `CT_HOST=0.0.0.0` (optionally `CT_PUBLIC_URL=http://<ip>:8000`). Allow ports
+   3000 and 8000 through the Windows firewall.
+2. Build the robot app once on a machine with Android Studio (JDK 17 + Android
+   SDK): `cd acu/Robot.Pwa.App; npm install; npm run build:apk` (or
+   `npx expo run:android` with the robot on adb). A rebuild is required because
+   `react-native-webview` is a native module. Install the APK on the KettyBot.
+3. On the robot: set `ACU_URL=http://<laptop-ip>:3000`, register, then approve it
+   in the ACU dashboard.
+4. In the Pudu app create map points, e.g. `Reception` and `CT 2`.
+5. Open `/studio` and click **Install CT journey on robot** (or
+   `POST /api/acu-bridge/install`).
+
+The robot app now opens `/journey` full screen by itself. No Start button is
+needed. The page drives the robot through a message bridge
+(`src/features/ctJourney/journeyHost.ts`):
+
+| Page → robot | Robot → page |
+| --- | --- |
+| `speak` (Android TTS), `navigate` / `cancelNavigation` (Pudu `RobotArrival`), `camera` on/off (Pudu face camera), `event` (ACU heartbeat) | `host` (capabilities, map points), `navigation` moving/arrived/failed/cancelled, `frame` (JPEG), `camera` errors |
+
+The hub stays the single source of truth. **Dispatch** starts real navigation,
+**Pause**/**Help** cancel it, **Resume** restarts it, and the robot's arrival
+callback reports `arrive`. Over plain http the WebView cannot use
+`getUserMedia`, so the wristband QR is read from the robot's face-camera frames
+(jsQR is served locally from `/static/vendor`). The laptop's USB cameras remain
+available via `/camera?cam=N` on the laptop.
+
+The robot's screen always owns the journey. Opening `/journey` in another
+browser shows "already open", and a reload on the robot takes over from any
+older screen without raising a help alert. In the browser preview
+(`http://localhost:8082`), the same page runs in an iframe with simulated
+walking and browser speech.
 
 Keep **only one patient controller and one camera controller** open per server.
 Multiple clinician observers are supported, but only the clinician who requested

@@ -1,0 +1,43 @@
+services:
+
+  backend:
+    build:
+      context: .                      # root — so both ApiGateway/ and BE/ are in scope
+      dockerfile: ApiGateway/Dockerfile
+    container_name: acu-backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - acu-data:/data                # persists devices.json & workflows.json across restarts
+    environment:
+      - DataPath=/data/devices.json
+      - WorkflowDataPath=/data/workflows.json
+      - RobotWorkflowDataPath=/data/robot-workflows.json
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:3000   # override appsettings so the container listens on all interfaces
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./ACU.FE
+      dockerfile: Dockerfile
+    container_name: acu-frontend
+    ports:
+      - "3100:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  mdns:
+    build:
+      context: .                      # root — MdnsAdvertiser.csproj lives under BE/
+      dockerfile: BE/MdnsAdvertiser/Dockerfile
+    container_name: acu-mdns
+    network_mode: host               # required so multicast reaches the real LAN (Linux hosts only)
+    environment:
+      - MDNS_PORT=3000
+      - MDNS_NAME=ACU Control Center
+    restart: unless-stopped
+
+volumes:
+  acu-data:

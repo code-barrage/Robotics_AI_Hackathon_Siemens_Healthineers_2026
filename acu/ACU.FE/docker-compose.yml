@@ -1,0 +1,6 @@
+services:
+  frontend:
+    build: .
+    container_name: acu-frontend
+    ports:
+      - "5173:80"

@@ -1,0 +1,378 @@
+/* =========================================================
+   Workflows feature.
+
+   Shared primitives composed from ui.css:
+   - `.surface-card`            on .workflow-card
+   - `.icon-tile.icon-tile-lg`  on .workflow-card-icon
+
+   Naming
+   ------
+   All workflow-feature classes use the `workflow-*` prefix
+   (no more `wf-` abbreviation).
+
+   Contents
+   --------
+   1. Workflow list & card (collapsible)
+   2. Card head (button)
+   3. Card body
+   4. Flow visualisation (rail + dots + connectors)
+   5. Destination & step chips
+   6. Card actions
+   7. Floating action button
+   8. Editor — destinations & steps
+   9. Editor — error banner
+   ========================================================= */
+
+
+/* =========================================================
+   1. WORKFLOW LIST & CARD
+   (surface styling supplied by .surface-card)
+   --------------------------------------------------------- */
+
+.workflow-list {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex; flex-direction: column;
+  gap: var(--space-3);
+}
+
+.workflow-card {
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.workflow-card:hover { border-color: var(--brand-100); }
+.workflow-card.open  { border-color: var(--brand-200); box-shadow: var(--shadow-sm); }
+
+
+/* =========================================================
+   2. CARD HEAD (collapsible toggle button)
+   --------------------------------------------------------- */
+
+.workflow-card-head {
+  display: flex; align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+}
+/* .workflow-card-icon inherits .icon-tile.icon-tile-lg. */
+.workflow-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.workflow-card-name {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+}
+.workflow-card-desc {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+          line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.workflow-card-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform var(--t-base);
+}
+.workflow-card.open .workflow-card-chevron {
+  color: var(--brand);
+  transform: rotate(180deg);
+}
+
+
+/* =========================================================
+   3. CARD BODY
+   --------------------------------------------------------- */
+
+.workflow-card-body {
+  padding: 0 var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.workflow-card-badges {
+  display: flex; flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+
+/* =========================================================
+   4. FLOW VISUALISATION
+   --------------------------------------------------------- */
+
+.workflow-flow {
+  display: flex; flex-direction: column;
+}
+.workflow-flow-row {
+  display: flex;
+  gap: var(--space-3);
+}
+.workflow-flow-content {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: var(--space-3);
+}
+.workflow-flow-row:last-child .workflow-flow-content {
+  padding-bottom: 0;
+}
+
+/* Vertical rail with numbered dots and connecting line. */
+.workflow-rail {
+  display: flex; flex-direction: column; align-items: center;
+  flex-shrink: 0;
+}
+.workflow-rail-dot {
+  display: grid; place-items: center;
+  width: 26px; height: 26px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
+.workflow-rail-line {
+  flex: 1;
+  width: 2px;
+  min-height: 14px;
+  margin: 4px 0;
+  background: linear-gradient(var(--brand), var(--brand-100));
+  border-radius: 2px;
+}
+
+
+/* =========================================================
+   5. DESTINATION & STEP CHIPS
+   --------------------------------------------------------- */
+
+.workflow-destination {
+  display: inline-flex; align-items: center;
+  gap: 5px;
+  font-weight: var(--fw-semibold);
+}
+.workflow-destination .icon { color: var(--brand); }
+
+.workflow-steps {
+  display: flex; flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+.workflow-step {
+  display: inline-flex; align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.workflow-step .icon { color: var(--brand); }
+
+
+/* =========================================================
+   6. CARD ACTIONS
+   --------------------------------------------------------- */
+
+.workflow-card-actions {
+  display: flex; flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+
+/* =========================================================
+   7. FLOATING ACTION BUTTON
+   --------------------------------------------------------- */
+
+.fab {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(var(--bottombar-h) + var(--safe-bottom) + var(--space-4));
+  z-index: 90;
+  display: grid; place-items: center;
+  width: 56px; height: 56px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+}
+.fab:hover {
+  background: var(--brand-hover);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+@media (min-width: 768px) {
+  .fab { bottom: var(--space-6); right: var(--space-6); }
+}
+
+
+/* =========================================================
+   8. EDITOR — destinations & steps
+   --------------------------------------------------------- */
+
+.workflow-form {
+  display: flex; flex-direction: column;
+  gap: var(--space-4);
+}
+.workflow-builder {
+  display: flex; flex-direction: column;
+  gap: var(--space-3);
+}
+
+.workflow-destination-block {
+  display: flex; flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.workflow-destination-head {
+  display: flex; align-items: center;
+  gap: var(--space-2);
+}
+.workflow-destination-number {
+  display: grid; place-items: center;
+  width: 22px; height: 22px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
+
+.workflow-step-row {
+  display: flex; align-items: center;
+  gap: var(--space-2);
+  padding-left: 1.5rem;
+}
+.workflow-step-row .select,
+.workflow-step-row .input { flex: 1; }
+
+.workflow-add-step {
+  align-self: flex-start;
+  display: inline-flex; align-items: center;
+  gap: 4px;
+  margin-left: 1.5rem;
+  padding: 0.35rem 0.75rem;
+  background: var(--brand-50);
+  border: 1px dashed var(--brand-100);
+  border-radius: var(--radius-sm);
+  color: var(--brand);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+.workflow-add-step:hover { background: var(--brand-100); }
+
+.workflow-add-destination {
+  align-self: stretch;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--space-2);
+  padding: 0.75rem 1rem;
+  background: var(--brand-50);
+  border: 1px dashed var(--brand);
+  border-radius: var(--radius-md);
+  color: var(--brand);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.workflow-add-destination:hover:not(:disabled) {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-style: solid;
+}
+.workflow-add-destination:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   9. EDITOR — error banner
+   --------------------------------------------------------- */
+
+.workflow-error {
+  padding: var(--space-2) var(--space-3);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+
+/* =========================================================
+   10. FORM SECTION LABELS
+   --------------------------------------------------------- */
+
+.workflow-section-label {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+
+/* =========================================================
+   11. FIELD HINT (helper text under an input)
+   --------------------------------------------------------- */
+
+.field-hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+
+/* =========================================================
+   12. BOT MAP DESTINATIONS — picker row + chip types
+   --------------------------------------------------------- */
+
+/* Picker row: [dropdown] [+ Add button] */
+.workflow-bot-picker {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+.workflow-bot-picker .select { flex: 1; }
+
+.workflow-dest-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+.workflow-dest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+.workflow-dest-chip svg { color: var(--brand); flex-shrink: 0; }
+
+.workflow-dest-chip-name { font-weight: var(--fw-medium); }
+
+.workflow-dest-chip-type {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  padding: 1px 5px;
+  background: var(--surface-alt);
+  border-radius: 4px;
+  line-height: 1.4;
+}

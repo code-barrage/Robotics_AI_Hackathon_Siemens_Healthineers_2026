@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Shared MSBuild properties for every test project under tests/.
+  Keeps TFM, nullable, platform and test-package versions in ONE place so a
+  new test project only needs a minimal .csproj. Production projects are
+  unaffected — imported only via tests/Directory.Build.props.
+-->
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Match the solution's platform so `dotnet test ./Acu.sln` resolves configs -->
+    <Platforms>x64</Platforms>
+    <Platform>x64</Platform>
+
+    <!-- Test assemblies are never packaged or shipped -->
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+
+    <!-- Test projects don't need XML docs; silence the inherited CS1591 tooling -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+
+    <!-- Deterministic, parallel-friendly defaults -->
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <!-- Pinned versions shared by all test projects (single source of truth) -->
+  <PropertyGroup>
+    <MicrosoftNetTestSdkVersion>17.11.1</MicrosoftNetTestSdkVersion>
+    <NUnitVersion>4.2.2</NUnitVersion>
+    <NUnitAnalyzersVersion>4.3.0</NUnitAnalyzersVersion>
+    <NUnitTestAdapterVersion>4.6.0</NUnitTestAdapterVersion>
+    <FluentAssertionsVersion>6.12.1</FluentAssertionsVersion>
+    <NSubstituteVersion>5.1.0</NSubstituteVersion>
+    <CoverletVersion>6.0.2</CoverletVersion>
+    <MvcTestingVersion>10.0.0</MvcTestingVersion>
+  </PropertyGroup>
+
+  <!--
+    Every ACTUAL test project gets the core test stack automatically.
+    Shared helper libraries (e.g. Acu.Testing) opt out with
+    <IsTestProject>false</IsTestProject> and pull only what they need.
+  -->
+  <ItemGroup Condition="'$(IsTestProject)' != 'false'">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(MicrosoftNetTestSdkVersion)" />
+    <PackageReference Include="NUnit" Version="$(NUnitVersion)" />
+    <PackageReference Include="NUnit.Analyzers" Version="$(NUnitAnalyzersVersion)">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="NUnit3TestAdapter" Version="$(NUnitTestAdapterVersion)">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" Version="$(FluentAssertionsVersion)" />
+    <PackageReference Include="NSubstitute" Version="$(NSubstituteVersion)" />
+    <PackageReference Include="coverlet.collector" Version="$(CoverletVersion)">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

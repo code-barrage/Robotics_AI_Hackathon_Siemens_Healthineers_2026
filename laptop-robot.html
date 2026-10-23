@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laptop Robot – local camera &amp; sensor feeder</title>
+<style>
+  :root { --bg:#0f1720; --panel:#16212d; --line:#26384a; --text:#e6edf3; --muted:#8aa0b4; --ok:#2ecc71; --warn:#f1c40f; --bad:#e74c3c; --acc:#00a3a6; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.4 system-ui,Segoe UI,Arial,sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0 12px 0 0; }
+  input, select, button { font:inherit; color:var(--text); background:#0b121a; border:1px solid var(--line); border-radius:6px; padding:5px 8px; }
+  button { cursor:pointer; background:#1d2c3b; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#001; font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  label { color:var(--muted); font-size:12px; display:flex; flex-direction:column; gap:2px; }
+  main { padding:16px; display:grid; gap:16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .card h2 { font-size:14px; margin:0 0 8px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; }
+  video { width:100%; aspect-ratio:4/3; background:#000; border-radius:6px; object-fit:contain; }
+  .pill { font-size:11px; padding:2px 8px; border-radius:999px; background:#0b121a; border:1px solid var(--line); color:var(--muted); }
+  .pill.ok { color:var(--ok); border-color:var(--ok); } .pill.warn { color:var(--warn); border-color:var(--warn); } .pill.bad { color:var(--bad); border-color:var(--bad); }
+  .muted { color:var(--muted); font-size:12px; }
+  pre { margin:0; max-height:220px; overflow:auto; background:#0b121a; border:1px solid var(--line); border-radius:6px; padding:8px; font-size:12px; }
+  .meter { height:6px; background:#0b121a; border-radius:3px; overflow:hidden; } .meter > div { height:100%; background:var(--acc); width:0; transition:width .3s; }
+  code { color:#9fd; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🤖 Laptop Robot</h1>
+  <label>ACU URL <input id="acu" size="24"></label>
+  <label>Robot ID <input id="robotId" size="16"></label>
+  <label>Name <input id="robotName" size="16"></label>
+  <button id="connectBtn" class="primary">Connect</button>
+  <button id="disconnectBtn" disabled>Disconnect</button>
+  <button id="unregisterBtn" title="Remove this robot from the ACU">Unregister</button>
+  <span id="regPill" class="pill">offline</span>
+  <span id="beatPill" class="pill">no heartbeat</span>
+</header>
+<main>
+  <div class="card">
+    <h2>Cameras on this laptop <span class="row"><button id="enumBtn">Allow &amp; list cameras</button><button id="streamBtn" disabled>▶ Start streaming</button></span></h2>
+    <div class="row">
+      <label>Frames / s per feed <input id="fps" type="number" min="0.5" max="15" step="0.5" value="4" style="width:80px"></label>
+      <label>JPEG quality <input id="quality" type="number" min="0.3" max="0.95" step="0.05" value="0.7" style="width:80px"></label>
+      <label>Max width <select id="maxW"><option>320</option><option selected>640</option><option>960</option><option>1280</option></select></label>
+      <label title="Brightness + motion of every feed, published to the sensor API">Vision sensor <select id="visionOn"><option value="1" selected>publish 1×/s</option><option value="0">off</option></select></label>
+      <label>Custom feed name <input id="feedName" placeholder="e.g. laptop-2, rear" size="14" spellcheck="false"></label>
+      <button id="addFeedBtn">+ add feed</button>
+    </div>
+    <p class="muted">Each slot maps a laptop camera onto a robot feed on the ACU (<code>POST /api/camera/frames</code>). The dashboard shows them exactly like the real KettyBot's front / tray cameras. The same camera may feed several slots.</p>
+  </div>
+  <div class="grid" id="slots"></div>
+  <div class="grid">
+    <div class="card">
+      <h2>Remote commands <span id="cmdPill" class="pill">waiting</span></h2>
+      <p class="muted">Send them from <b>robot-dashboard.html → 🎮 Control</b> (approve this robot there first). Supported: navigate (simulated), say (speech synthesis), stopSpeech, cancel, camera on/off, ping.</p>
+      <div class="row"><span class="muted">Location:</span> <b id="locLbl">Reception</b> <span id="navLbl" class="muted"></span></div>
+      <pre id="cmdLog"></pre>
+    </div>
+    <div class="card">
+      <h2>Published sensor data <span class="pill" id="sensorPill">idle</span></h2>
+      <p class="muted"><code>POST /api/bot/{id}/sensors/vision</code> → read back at <code>/api/acu/robots/{id}/sensors/vision/latest</code> or live via SSE <code>/sensors/stream</code>.</p>
+      <pre id="sensorOut">–</pre>
+    </div>
+    <div class="card">
+      <h2>Log</h2>
+      <pre id="log"></pre>
+    </div>
+  </div>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const store = {
+  get: (k, d) => localStorage.getItem("laptopRobot." + k) ?? d,
+  set: (k, v) => localStorage.setItem("laptopRobot." + k, v),
+};
+const DESTINATIONS = [
+  { name: "Reception", type: "table", x: 0, y: 0, z: 0 },
+  { name: "Changing Room", type: "table", x: 3, y: 1, z: 0 },
+  { name: "Waiting Area", type: "usher", x: 2, y: 4, z: 0 },
+  { name: "CT Room", type: "table", x: 6, y: 2, z: 0 },
+];
+const BUILTIN_SLOTS = [
+  { key: "front", label: "Front (face) camera", camera: "face", location: null },
+  { key: "tray-1", label: "Tray camera 1", camera: "tray", location: 0 },
+  { key: "tray-2", label: "Tray camera 2", camera: "tray", location: 1 },
+];
+
+$("acu").value = store.get("acu", "http://localhost:3000");
+$("robotId").value = store.get("robotId", "LAPTOP-ROBOT");
+$("robotName").value = store.get("name", "Laptop Robot (USB cameras)");
+let mac = store.get("mac", null);
+if (!mac) {
+  mac = "02:" + Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => b.toString(16).padStart(2, "0")).join(":").toUpperCase();
+  store.set("mac", mac);
+}
+
+const state = {
+  connected: false, timer: null, devices: [], streaming: false,
+  baseline: false, lastId: null, lastCommand: null, location: "Reception", nav: null, first: true,
+  sent: 0, failed: 0, approved: false,
+};
+const slots = [];
+
+function log(msg) {
+  const el = $("log");
+  el.textContent = `${new Date().toLocaleTimeString()}  ${msg}\n` + el.textContent.slice(0, 6000);
+}
+function cmdLog(msg) {
+  const el = $("cmdLog");
+  el.textContent = `${new Date().toLocaleTimeString()}  ${msg}\n` + el.textContent.slice(0, 6000);
+}
+const base = () => $("acu").value.trim().replace(/\/+$/, "");
+const rid = () => $("robotId").value.trim();
+async function call(method, path, body) {
+  const res = await fetch(base() + path, {
+    method, headers: body !== undefined ? { "Content-Type": "application/json" } : {},
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  let data = text;
+  try { data = text ? JSON.parse(text) : null; } catch { /* plain text */ }
+  return { ok: res.ok, status: res.status, data };
+}
+function pill(el, text, cls) { el.textContent = text; el.className = "pill " + (cls || ""); }
+
+// ---------------- cameras ----------------
+function slotCard(slot) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <h2><span>${slot.label} → <code>${slot.key}</code></span><span class="pill">off</span></h2>
+    <div class="row" style="margin-bottom:8px">
+      <label style="flex:1">Laptop camera <select style="width:100%"></select></label>
+      ${slot.custom ? '<button title="Remove feed">✕</button>' : ""}
+    </div>
+    <video autoplay muted playsinline></video>
+    <div class="row muted" style="margin-top:6px;justify-content:space-between"><span class="stats">–</span><span class="vis"></span></div>
+    <div class="meter" title="motion"><div></div></div>`;
+  slot.card = card;
+  slot.select = card.querySelector("select");
+  slot.video = card.querySelector("video");
+  slot.pill = card.querySelector("h2 .pill");
+  slot.stats = card.querySelector(".stats");
+  slot.vis = card.querySelector(".vis");
+  slot.meter = card.querySelector(".meter > div");
+  slot.sent = 0; slot.failed = 0; slot.busy = false; slot.last = 0; slot.prev = null; slot.metrics = null;
+  slot.select.addEventListener("change", () => { store.set("slot." + slot.key, slot.select.value); openSlot(slot); });
+  const rm = card.querySelector("button");
+  if (rm) rm.addEventListener("click", () => {
+    closeSlot(slot); card.remove(); slots.splice(slots.indexOf(slot), 1);
+    store.set("customFeeds", JSON.stringify(slots.filter((s) => s.custom).map((s) => s.key)));
+  });
+  $("slots").appendChild(card);
+  fillSelect(slot);
+  return slot;
+}
+function fillSelect(slot) {
+  const saved = store.get("slot." + slot.key, "");
+  slot.select.innerHTML = '<option value="">— not used —</option>' +
+    state.devices.map((d, i) => `<option value="${d.deviceId}">${d.label || "Camera " + (i + 1)}</option>`).join("");
+  if (state.devices.some((d) => d.deviceId === saved)) slot.select.value = saved;
+}
+async function openSlot(slot) {
+  closeSlot(slot);
+  if (!slot.select.value) { pill(slot.pill, "off"); return; }
+  try {
+    slot.stream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: slot.select.value }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false,
+    });
+    slot.video.srcObject = slot.stream;
+    pill(slot.pill, state.streaming ? "streaming" : "preview", state.streaming ? "ok" : "");
+  } catch (e) {
+    pill(slot.pill, "error", "bad");
+    log(`${slot.key}: cannot open camera – ${e.name}: ${e.message}`);
+  }
+}
+function closeSlot(slot) {
+  if (slot.stream) slot.stream.getTracks().forEach((t) => t.stop());
+  slot.stream = null; slot.video.srcObject = null; slot.prev = null; slot.metrics = null;
+}
+async function enumerate() {
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    tmp.getTracks().forEach((t) => t.stop());
+  } catch (e) {
+    log("Camera permission denied: " + e.message);
+    return;
+  }
+  state.devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+  log(`Found ${state.devices.length} camera(s): ` + state.devices.map((d) => d.label || d.deviceId.slice(0, 8)).join(", "));
+  slots.forEach((s, i) => {
+    fillSelect(s);
+    // First run: give front and tray-1 the first two cameras.
+    if (!s.select.value && !store.get("slot." + s.key, null) && !s.custom && state.devices[i] && i < 2) {
+      s.select.value = state.devices[i].deviceId;
+      store.set("slot." + s.key, s.select.value);
+    }
+    openSlot(s);
+  });
+  $("streamBtn").disabled = false;
+}
+function addCustomFeed(name) {
+  const key = (name || "").trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(key) || slots.some((s) => s.key === key)) {
+    if (name) log("Feed name must be a-z, 0-9 and '-', max 32 chars, and unique.");
+    return null;
+  }
+  const slot = slotCard({ key, label: "Custom feed", camera: key, location: null, custom: true });
+  slots.push(slot);
+  return slot;
+}
+
+const work = document.createElement("canvas");
+const small = document.createElement("canvas");
+small.width = 64; small.height = 48;
+const smallCtx = small.getContext("2d", { willReadFrequently: true });
+
+function measure(slot) {
+  smallCtx.drawImage(slot.video, 0, 0, 64, 48);
+  const px = smallCtx.getImageData(0, 0, 64, 48).data;
+  const lum = new Uint8Array(64 * 48);
+  let sum = 0, moved = 0;
+  for (let i = 0; i < lum.length; i++) {
+    lum[i] = (px[i * 4] * 299 + px[i * 4 + 1] * 587 + px[i * 4 + 2] * 114) / 1000;
+    sum += lum[i];
+    if (slot.prev && Math.abs(lum[i] - slot.prev[i]) > 25) moved++;
+  }
+  slot.prev = lum;
+  slot.metrics = {
+    brightness: Math.round((sum / lum.length / 255) * 100) / 100,
+    motion: Math.round((moved / lum.length) * 1000) / 1000,
+    width: slot.video.videoWidth, height: slot.video.videoHeight,
+  };
+  slot.vis.textContent = `brightness ${slot.metrics.brightness} · motion ${(slot.metrics.motion * 100).toFixed(1)}%`;
+  slot.meter.style.width = Math.min(100, slot.metrics.motion * 300) + "%";
+}
+
+async function captureAndSend(slot) {
+  const v = slot.video;
+  if (!v.videoWidth || slot.busy) return;
+  const scale = Math.min(1, Number($("maxW").value) / v.videoWidth);
+  work.width = Math.round(v.videoWidth * scale);
+  work.height = Math.round(v.videoHeight * scale);
+  work.getContext("2d").drawImage(v, 0, 0, work.width, work.height);
+  const blob = await new Promise((r) => work.toBlob(r, "image/jpeg", Number($("quality").value)));
+  if (!blob) return;
+  slot.busy = true;
+  const q = new URLSearchParams({ camera: slot.camera, robotId: rid() });
+  if (slot.location !== null) q.set("location", slot.location);
+  try {
+    const res = await fetch(`${base()}/api/camera/frames?${q}`, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob });
+    if (res.ok) { slot.sent++; state.sent++; } else { slot.failed++; state.failed++; slot.lastError = "HTTP " + res.status; }
+  } catch (e) {
+    slot.failed++; state.failed++; slot.lastError = e.message;
+  } finally {
+    slot.busy = false;
+  }
+  slot.stats.textContent = `${slot.sent} sent · ${slot.failed} failed · ${(blob.size / 1024).toFixed(0)} KB` + (slot.failed && slot.lastError ? ` · ${slot.lastError}` : "");
+}
+
+function setStreaming(on) {
+  state.streaming = on;
+  $("streamBtn").textContent = on ? "■ Stop streaming" : "▶ Start streaming";
+  slots.forEach((s) => s.stream && pill(s.pill, on ? "streaming" : "preview", on ? "ok" : ""));
+  log(on ? "Streaming laptop cameras to the ACU" : "Streaming stopped");
+}
+
+let lastVision = 0;
+function tick() {
+  const now = performance.now();
+  const interval = 1000 / Math.max(0.5, Number($("fps").value) || 4);
+  for (const s of slots) {
+    if (!s.stream || !s.video.videoWidth) continue;
+    if (now - (s.lastMeasure || 0) >= 250) { s.lastMeasure = now; measure(s); }
+    if (state.streaming && now - s.last >= interval) { s.last = now; captureAndSend(s); }
+  }
+  if ($("visionOn").value === "1" && state.connected && now - lastVision >= 1000) {
+    lastVision = now;
+    publishVision();
+  }
+}
+
+// A worker timer keeps ticking when this tab is in the background (rAF and page timers get paused/throttled).
+function startTicker() {
+  try {
+    const src = "setInterval(() => postMessage(0), 50);";
+    const w = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+    w.onmessage = tick;
+  } catch {
+    setInterval(tick, 50);
+  }
+}
+
+async function publishVision() {
+  const feeds = {};
+  for (const s of slots) if (s.metrics) feeds[s.key] = s.metrics;
+  if (!Object.keys(feeds).length) return;
+  const body = { source: "laptop-usb-cameras", at: new Date().toISOString(), feeds };
+  try {
+    const r = await call("POST", `/api/bot/${encodeURIComponent(rid())}/sensors/vision`, body);
+    pill($("sensorPill"), r.ok ? `seq ${r.data.seq}` : "HTTP " + r.status, r.ok ? "ok" : "bad");
+    $("sensorOut").textContent = JSON.stringify(body, null, 2);
+  } catch (e) {
+    pill($("sensorPill"), "error", "bad");
+  }
+}
+
+// ---------------- robot protocol ----------------
+async function connect() {
+  ["acu", "robotId"].forEach((k) => store.set(k, $(k).value.trim()));
+  store.set("name", $("robotName").value.trim());
+  try {
+    const r = await call("POST", "/api/bot/register", {
+      deviceId: rid(), name: $("robotName").value.trim() || rid(), ip: location.hostname || "127.0.0.1", mac, firmware: "laptop-robot.html",
+    });
+    const msg = r.data && r.data.error ? r.data.error : JSON.stringify(r.data);
+    if (r.ok) log(`Registered ${rid()} – approve it in the dashboard (🎮 Control or Fleet).`);
+    else if (r.status === 409 && /^Device '.*' is already registered/.test(msg)) log(`${rid()} is already registered – reconnecting.`);
+    else if (r.status === 409 && /^MAC address/.test(msg)) {
+      log(`${msg}. This browser is that robot: use its ID, or unregister it first.`);
+      const owner = /device '(.+)'$/.exec(msg);
+      if (owner) $("robotId").value = owner[1];
+      return;
+    }
+    else { log(`Register failed (HTTP ${r.status}): ${msg}`); return; }
+  } catch (e) {
+    log(`Cannot reach ${base()} – ${e.message}`);
+    return;
+  }
+  state.connected = true; state.first = true; state.baseline = false;
+  $("connectBtn").disabled = true; $("disconnectBtn").disabled = false;
+  heartbeat();
+  state.timer = setInterval(heartbeat, 2000);
+}
+function disconnect() {
+  clearInterval(state.timer);
+  state.connected = false;
+  $("connectBtn").disabled = false; $("disconnectBtn").disabled = true;
+  pill($("regPill"), "offline"); pill($("beatPill"), "no heartbeat");
+}
+async function unregister() {
+  if (!confirm(`Unregister ${rid()} from ${base()}?`)) return;
+  disconnect();
+  const r = await call("DELETE", `/api/bot/unregister/${encodeURIComponent(rid())}`, { mac });
+  log(`Unregister: HTTP ${r.status} ${JSON.stringify(r.data)}`);
+}
+
+async function telemetry() {
+  const t = {
+    batteryPercent: 100, charging: true, powerSource: "laptop",
+    cameraUpload: { active: state.streaming, sent: state.sent, failed: state.failed, feeds: slots.filter((s) => s.stream).map((s) => s.key) },
+    navigationTarget: state.nav, telemetryAt: new Date().toISOString(), platform: navigator.userAgent.slice(0, 80),
+  };
+  try {
+    if (navigator.getBattery) {
+      const b = await navigator.getBattery();
+      t.batteryPercent = Math.round(b.level * 100); t.charging = b.charging;
+    }
+  } catch { /* not available */ }
+  if (state.lastCommand) t.lastCommand = state.lastCommand;
+  return t;
+}
+
+async function heartbeat() {
+  if (!state.connected) return;
+  const body = { mac, ...(await telemetry()) };
+  if (state.first) { body.destinations = DESTINATIONS; body.lastSeenLocation = state.location; }
+  let r;
+  try { r = await call("POST", `/api/bot/device-status/${encodeURIComponent(rid())}`, body); }
+  catch (e) { pill($("beatPill"), "ACU unreachable", "bad"); return; }
+  if (!r.ok) {
+    const err = r.data && r.data.error ? r.data.error : "";
+    if (r.status === 403 && /not approved/i.test(err)) {
+      pill($("beatPill"), "awaiting approval", "warn");
+      pill($("regPill"), "pending – approve in dashboard", "warn");
+      return;
+    }
+    pill($("beatPill"), "HTTP " + r.status, "bad");
+    if (r.status === 403) { log(`Heartbeat rejected: ${err} – use another Robot ID or unregister it first.`); disconnect(); }
+    if (r.status === 404) { log("Robot is not registered any more – reconnect."); disconnect(); }
+    return;
+  }
+  state.first = false;
+  pill($("beatPill"), "heartbeat " + new Date().toLocaleTimeString(), "ok");
+  const status = r.data.status || "?";
+  state.approved = status === "approved";
+  pill($("regPill"), status, state.approved ? "ok" : "warn");
+  handleInstruction(r.data.instructions);
+}
+
+function handleInstruction(raw) {
+  let cmd = null;
+  if (typeof raw === "string" && raw.trim().startsWith("{")) { try { cmd = JSON.parse(raw); } catch { cmd = null; } }
+  const id = cmd && typeof cmd.id === "string" ? cmd.id : null;
+  if (!state.baseline) { state.baseline = true; state.lastId = id; pill($("cmdPill"), "ready", "ok"); return; }
+  if (!id || id === state.lastId) return;
+  state.lastId = id;
+  run(cmd);
+}
+
+async function report(cmd, status, message) {
+  state.lastCommand = { id: cmd.id, action: cmd.action, status, at: new Date().toISOString(), ...(message ? { message: String(message).slice(0, 200) } : {}) };
+  cmdLog(`${cmd.action} → ${status}${message ? " (" + message + ")" : ""}`);
+  pill($("cmdPill"), `${cmd.action}: ${status}`, status === "failed" ? "bad" : status === "done" ? "ok" : "warn");
+  const body = { mac, lastCommand: state.lastCommand, event: `remote_${cmd.action}_${status} ${message || ""}`.trim().slice(0, 80) };
+  try { await call("POST", `/api/bot/device-status/${encodeURIComponent(rid())}`, body); } catch { /* next heartbeat carries it */ }
+}
+
+let navTimer = null;
+async function run(cmd) {
+  cmdLog("received " + JSON.stringify(cmd));
+  try {
+    switch (cmd.action) {
+      case "ping": return report(cmd, "done", "pong from laptop");
+      case "say": {
+        if (!cmd.text) return report(cmd, "failed", "text missing");
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(String(cmd.text));
+        if (cmd.lang) u.lang = cmd.lang;
+        report(cmd, "running", "speaking");
+        u.onend = () => report(cmd, "done", "spoken");
+        u.onerror = (e) => report(cmd, "failed", e.error);
+        speechSynthesis.speak(u);
+        return;
+      }
+      case "stopSpeech": speechSynthesis.cancel(); return report(cmd, "done", "speech stopped");
+      case "cancel":
+        clearTimeout(navTimer); speechSynthesis.cancel();
+        state.nav = null; $("navLbl").textContent = "";
+        return report(cmd, "done", "cancelled");
+      case "navigate": {
+        const dest = String(cmd.destination || "").trim();
+        if (!dest) return report(cmd, "failed", "destination missing");
+        clearTimeout(navTimer);
+        state.nav = dest; $("navLbl").textContent = `→ driving to ${dest} (simulated)`;
+        await report(cmd, "running", "driving to " + dest);
+        navTimer = setTimeout(async () => {
+          state.location = dest; state.nav = null;
+          $("locLbl").textContent = dest; $("navLbl").textContent = "";
+          try { await call("POST", `/api/bot/device-status/${encodeURIComponent(rid())}`, { mac, lastSeenLocation: dest }); } catch { /* ignore */ }
+          report(cmd, "done", "arrived at " + dest);
+        }, 4000);
+        return;
+      }
+      case "camera": {
+        if (cmd.intervalMs) $("fps").value = Math.min(15, Math.max(0.5, 1000 / Number(cmd.intervalMs))).toFixed(1);
+        if (cmd.on && !slots.some((s) => s.stream)) return report(cmd, "failed", "no laptop camera selected");
+        setStreaming(!!cmd.on);
+        return report(cmd, "done", cmd.on ? "streaming " + slots.filter((s) => s.stream).map((s) => s.key).join(", ") : "stopped");
+      }
+      default: return report(cmd, "failed", "unsupported action " + cmd.action);
+    }
+  } catch (e) {
+    report(cmd, "failed", e.message);
+  }
+}
+
+// ---------------- wiring ----------------
+BUILTIN_SLOTS.forEach((s) => slots.push(slotCard({ ...s })));
+JSON.parse(store.get("customFeeds", "[]")).forEach((k) => addCustomFeed(k));
+$("enumBtn").addEventListener("click", enumerate);
+$("streamBtn").addEventListener("click", () => setStreaming(!state.streaming));
+$("addFeedBtn").addEventListener("click", () => {
+  const slot = addCustomFeed($("feedName").value || "laptop-" + (slots.length + 1));
+  if (slot) {
+    $("feedName").value = "";
+    store.set("customFeeds", JSON.stringify(slots.filter((s) => s.custom).map((s) => s.key)));
+    if (state.devices.length) fillSelect(slot);
+  }
+});
+$("connectBtn").addEventListener("click", connect);
+$("disconnectBtn").addEventListener("click", disconnect);
+$("unregisterBtn").addEventListener("click", unregister);
+navigator.mediaDevices?.addEventListener?.("devicechange", () => state.devices.length && enumerate());
+if (!navigator.mediaDevices) log("Camera API unavailable – open this page from file:// or http://localhost in Chrome/Edge.");
+startTicker();
+log(`Robot MAC for this browser: ${mac}. Click “Allow & list cameras”, then Connect.`);
+</script>
+</body>
+</html>

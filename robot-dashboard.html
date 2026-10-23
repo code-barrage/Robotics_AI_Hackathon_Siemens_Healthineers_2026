@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Real Robot Explorer – ACU Live Dashboard</title>
+<style>
+  :root {
+    --bg: #0b1017; --panel: #121a24; --panel2: #18222f; --line: #233142; --text: #dbe6f3;
+    --muted: #8296ad; --accent: #00b3a4; --accent2: #3d8bfd; --ok: #2ecc71; --warn: #f5a623; --bad: #ff5c5c;
+    --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 10px 16px; background: #0e151ef2; border-bottom: 1px solid var(--line); backdrop-filter: blur(6px); }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; letter-spacing: .3px; }
+  header h1 span { color: var(--accent); }
+  label.inline { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; }
+  input, select, button, textarea { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 8px; }
+  input:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); }
+  button { cursor: pointer; } button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #031a18; font-weight: 600; }
+  button.danger { border-color: var(--bad); color: var(--bad); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px;
+    background: var(--panel2); border: 1px solid var(--line); white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .ok .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); } .warn .dot { background: var(--warn); } .bad .dot { background: var(--bad); }
+  .spacer { flex: 1; }
+  nav.tabs { display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  nav.tabs button { border-radius: 6px 6px 0 0; border-bottom: none; background: transparent; color: var(--muted); }
+  nav.tabs button.active { background: var(--panel); color: var(--text); border-color: var(--line); }
+  main { padding: 16px; }
+  section.tab { display: none; } section.tab.active { display: block; }
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 0 0 10px;
+    display: flex; align-items: center; gap: 8px; }
+  .card h2 .spacer { flex: 1; }
+  .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+  .kv div { background: var(--panel2); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+  .kv small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  .kv b { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td.mono, .mono { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+  tr.flash td { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: #00b3a455; } to { background: transparent; } }
+  tr.clickable { cursor: pointer; } tr.clickable:hover td { background: var(--panel2); }
+  tr.sel td { background: #00b3a41f; }
+  .cam { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4/3; display: flex;
+    align-items: center; justify-content: center; }
+  .cam img { width: 100%; height: 100%; object-fit: contain; }
+  .cam .overlay { position: absolute; left: 8px; top: 8px; right: 8px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; }
+  .cam .ts { position: absolute; left: 8px; bottom: 8px; font: 11px var(--mono); background: #000a; padding: 2px 6px; border-radius: 4px; }
+  .cam .empty { color: var(--muted); text-align: center; padding: 20px; }
+  .tag { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #000b; font-weight: 600; letter-spacing: .5px; }
+  .tag.live { color: var(--ok); } .tag.stale { color: var(--warn); } .tag.off { color: var(--bad); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .muted { color: var(--muted); } .small { font-size: 12px; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  .chart { background: var(--panel2); border-radius: 8px; padding: 8px 10px; }
+  .chart .h { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .chart .h b { color: var(--text); font-family: var(--mono); }
+  .chart canvas { width: 100%; height: 70px; display: block; }
+  .battery { position: relative; height: 22px; border: 2px solid var(--muted); border-radius: 4px; margin-top: 4px; }
+  .battery i { position: absolute; inset: 1px auto 1px 1px; border-radius: 2px; background: var(--ok); }
+  .log { max-height: 340px; overflow: auto; font: 12px var(--mono); }
+  .log div { padding: 3px 0; border-bottom: 1px dashed var(--line); }
+  .log .t { color: var(--muted); margin-right: 8px; }
+  pre.json { margin: 0; padding: 10px; background: #070b10; border-radius: 8px; font: 12px/1.45 var(--mono); overflow: auto;
+    max-height: 520px; white-space: pre-wrap; word-break: break-word; }
+  .j-k { color: #7cc4ff; } .j-s { color: #b5e48c; } .j-n { color: #ffb86b; } .j-b { color: #ff79c6; } .j-z { color: #8296ad; }
+  svg.map { width: 100%; height: 380px; background: #070b10; border-radius: 8px; }
+  .step { border-left: 3px solid var(--accent2); padding: 6px 10px; margin: 6px 0; background: var(--panel2); border-radius: 0 6px 6px 0; }
+  .step .sid { font: 11px var(--mono); color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; }
+  input[type=range] { width: 100%; padding: 0; }
+  .err { color: var(--bad); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🤖 Real Robot <span>Explorer</span></h1>
+  <label class="inline">ACU
+    <input id="acuUrl" size="26" spellcheck="false">
+  </label>
+  <label class="inline">Robot
+    <select id="robotSel" style="min-width:220px"></select>
+  </label>
+  <label class="inline">Poll
+    <select id="pollSel">
+      <option value="1000">1 s</option><option value="2000" selected>2 s</option>
+      <option value="5000">5 s</option><option value="10000">10 s</option>
+    </select>
+  </label>
+  <button id="pauseBtn">⏸ Pause</button>
+  <span class="spacer"></span>
+  <span id="healthPill" class="pill"><span class="dot"></span><span>ACU …</span></span>
+  <span id="robotPill" class="pill"><span class="dot"></span><span>Robot …</span></span>
+  <span id="seenPill" class="pill">last seen –</span>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="live" class="active">📺 Live</button>
+  <button data-tab="control">🎮 Control</button>
+  <button data-tab="telemetry">📈 Telemetry</button>
+  <button data-tab="history">🎞 Frame history</button>
+  <button data-tab="map">🗺 Map & workflow</button>
+  <button data-tab="audio">🎙 Microphone</button>
+  <button data-tab="fleet">🚚 Fleet</button>
+  <button data-tab="sensors">📡 Sensors</button>
+  <button data-tab="api">🧪 API explorer</button>
+</nav>
+
+<main>
+  <!-- LIVE -->
+  <section class="tab active" id="tab-live">
+    <div class="card" style="margin-bottom:14px">
+      <h2>Cameras
+        <span class="spacer"></span>
+        <label class="inline">Mode
+          <select id="camMode">
+            <option value="stream">MJPEG stream (smooth)</option>
+            <option value="poll">Poll /latest JPEG</option>
+          </select>
+        </label>
+        <label class="inline" id="camRateWrap">every
+          <select id="camRate"><option value="250">250 ms</option><option value="500" selected>500 ms</option><option value="1000">1 s</option></select>
+        </label>
+        <button id="camReload">↻ Reconnect</button>
+      </h2>
+      <div class="grid g3" id="cams"></div>
+      <div class="note" style="margin-top:10px">If a feed is offline (ACU returns 503 after 10 s without frames), the tile shows the
+        most recent retained frame from the robot instead. Reconnect is attempted automatically every 5 s.</div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h2>Robot snapshot</h2><div class="kv" id="liveKv"></div></div>
+      <div class="card"><h2>Event stream <span class="spacer"></span><button id="clearLog" class="small">Clear</button></h2>
+        <div class="log" id="liveLog"></div></div>
+    </div>
+  </section>
+
+  <!-- CONTROL -->
+  <section class="tab" id="tab-control">
+    <div class="note" style="margin-bottom:12px">Commands travel through the ACU instructions channel
+      (<code>POST /api/acu/instructions/{robot}</code> with a JSON command). Our robot app (Robot.Pwa.App with remote control)
+      picks them up within ~2 s, runs each one once, and reports back in <code>statusData.lastCommand</code> and the event list.
+      The robot must be <b>approved</b> and <b>online</b>.</div>
+    <div class="grid g3">
+      <div class="card"><h2>Robot</h2>
+        <div class="kv" id="ctlKv"></div>
+        <div class="row" style="margin-top:10px">
+          <button id="ctlApprove" class="primary">✔ Approve</button>
+          <button id="ctlReject" class="danger">✖ Reject</button>
+          <button id="ctlPing">📡 Ping</button>
+        </div>
+      </div>
+      <div class="card"><h2>Navigate</h2>
+        <div class="row"><select id="ctlDest" style="flex:1"></select><button id="ctlGo" class="primary">▶ Go</button></div>
+        <div class="row" style="margin-top:8px"><input id="ctlDestFree" placeholder="…or type a destination name" style="flex:1"></div>
+        <div class="row" style="margin-top:8px"><button id="ctlCancel" class="danger">⏹ Cancel navigation + speech</button></div>
+        <div class="small muted" style="margin-top:6px">Destinations come from the robot's Pudu map. Cancel stops the app waiting and the speech;
+          the Pudu base itself is stopped from its own screen/emergency button.</div>
+      </div>
+      <div class="card"><h2>Speak</h2>
+        <textarea id="ctlSay" rows="3" style="width:100%" placeholder="Text the robot should say"></textarea>
+        <div class="row" style="margin-top:8px">
+          <select id="ctlLang"><option value="">ACU language</option><option>de-DE</option><option>en-US</option><option>en-GB</option><option>fr-FR</option><option>es-ES</option></select>
+          <button id="ctlSayBtn" class="primary">🔊 Say</button><button id="ctlHush">🤫 Stop speech</button>
+        </div>
+        <div class="row" style="margin-top:6px" id="ctlPhrases"></div>
+      </div>
+    </div>
+    <div class="grid g3" style="margin-top:14px">
+      <div class="card"><h2>Camera streaming</h2>
+        <div class="row">
+          <label class="inline"><input type="checkbox" id="ctlFace" checked> face camera</label>
+          <label class="inline">every <select id="ctlCamRate"><option value="250">250 ms</option><option value="500" selected>500 ms</option><option value="1000">1 s</option><option value="2000">2 s</option></select></label>
+        </div>
+        <div class="row" style="margin-top:8px"><button id="ctlCamOn" class="primary">📷 Start</button><button id="ctlCamOff">Stop</button></div>
+        <div class="cam" style="margin-top:10px;aspect-ratio:16/9"><img id="ctlCamImg" alt=""><div class="ts" id="ctlCamTs"></div></div>
+      </div>
+      <div class="card"><h2>Workflows</h2>
+        <div class="row"><select id="ctlWf" style="flex:1"></select><button id="ctlWfAssign" class="primary">Assign</button><button id="ctlWfClear">Unassign</button></div>
+        <div class="small" id="ctlWfInfo" style="margin-top:8px"></div>
+        <div class="row" style="margin-top:10px">
+          <a id="ctlEditor" target="_blank"><button>✏ Open workflow editor (ACU.FE)</button></a>
+          <a id="ctlDocs" target="_blank"><button>📘 API docs</button></a>
+        </div>
+        <label class="inline" style="margin-top:8px">Editor URL <input id="ctlEditorUrl" size="26" spellcheck="false"></label>
+      </div>
+      <div class="card"><h2>Command log <span class="spacer"></span><span class="small muted" id="ctlLast"></span></h2>
+        <div class="log" id="ctlLog"></div></div>
+    </div>
+  </section>
+
+  <!-- TELEMETRY -->
+  <section class="tab" id="tab-telemetry">
+    <div class="grid g2">
+      <div class="card"><h2>Device identity & state</h2><div class="kv" id="identKv"></div></div>
+      <div class="card"><h2>Battery & activity</h2><div id="battBox"></div></div>
+    </div>
+    <div class="card" style="margin-top:14px"><h2>Numeric parameters over time (auto-discovered)
+      <span class="spacer"></span><span class="small muted" id="chartInfo"></span>
+      <button id="exportCsv" class="small">⬇ CSV</button></h2>
+      <div class="charts" id="charts"></div>
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <div class="card"><h2>All parameters (statusData + device, flattened)
+        <span class="spacer"></span><input id="paramFilter" placeholder="filter…" size="14"></h2>
+        <div style="max-height:520px;overflow:auto"><table id="paramTable">
+          <thead><tr><th>Parameter</th><th>Value</th><th>Type</th><th>Changed</th></tr></thead><tbody></tbody>
+        </table></div>
+      </div>
+      <div class="card"><h2>Recent events (from robot)</h2>
+        <div style="max-height:520px;overflow:auto"><table id="eventTable">
+          <thead><tr><th>Received</th><th>Event</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px"><h2>Raw device JSON</h2><pre class="json" id="rawDevice"></pre></div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="tab" id="tab-history">
+    <div class="card">
+      <h2>Retained frames playback
+        <span class="spacer"></span>
+        <label class="inline">Camera
+          <select id="histCam"><option value="front">front</option><option value="tray-1">tray-1</option><option value="tray-2">tray-2</option></select>
+        </label>
+        <button id="histLoad">↻ Load</button>
+      </h2>
+      <div class="grid g2">
+        <div>
+          <div class="cam" style="aspect-ratio:4/3"><img id="histImg" alt=""><div class="ts" id="histTs">–</div></div>
+          <div class="row" style="margin-top:8px">
+            <button id="histPlay">▶ Play</button>
+            <button id="histPrev">⏮</button><button id="histNext">⏭</button>
+            <label class="inline">speed <select id="histSpeed"><option>0.5</option><option selected>1</option><option>2</option><option>4</option><option>8</option></select>×</label>
+            <a id="histDl" class="small" target="_blank">open JPEG ↗</a>
+            <span class="spacer"></span><span class="small muted" id="histPos"></span>
+          </div>
+          <input type="range" id="histSlider" min="0" max="0" value="0">
+        </div>
+        <div style="max-height:520px;overflow:auto">
+          <table id="histTable"><thead><tr><th>#</th><th>Received</th><th>Bytes</th><th>Meta</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAP -->
+  <section class="tab" id="tab-map">
+    <div class="grid g2">
+      <div class="card"><h2>Destinations (Pudu map points) <span class="spacer"></span><span class="small muted" id="locInfo"></span></h2>
+        <svg class="map" id="mapSvg"></svg>
+        <table id="destTable" style="margin-top:8px"><thead><tr><th>Name</th><th>Type</th><th>x</th><th>y</th><th>z (heading)</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="card"><h2>Assigned workflow</h2><div id="wfBox" class="muted">–</div></div>
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <div class="card"><h2>ACU settings</h2><pre class="json" id="settingsJson"></pre></div>
+      <div class="card"><h2>Send instruction to robot</h2>
+        <div class="note" style="margin-bottom:8px">⚠ The hosted ACU is shared. This writes <code>POST /api/acu/instructions/{deviceId}</code>
+          and only works while the robot is online.</div>
+        <div class="row"><input id="instrInput" placeholder="e.g. pause" style="flex:1"><button id="instrSend" class="danger">Send</button></div>
+        <div id="instrOut" class="small mono" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUDIO -->
+  <section class="tab" id="tab-audio">
+    <div class="card"><h2>Microphone clips (10 s, 16 kHz PCM16 WAV)
+      <span class="spacer"></span>
+      <label class="inline"><input type="checkbox" id="autoPlay"> auto-play new clips</label>
+      <button id="micReload">↻</button></h2>
+      <table id="micTable"><thead><tr><th>Received</th><th>Duration</th><th>Format</th><th>Play</th></tr></thead><tbody></tbody></table>
+      <div class="note" style="margin-top:8px">Clips appear only after an operator has given consent on the robot and it has uploaded a recording.</div>
+    </div>
+  </section>
+
+  <!-- FLEET -->
+  <section class="tab" id="tab-fleet">
+    <div class="card"><h2>All devices registered on this ACU <span class="spacer"></span><span class="small muted">click a row to select</span></h2>
+      <div style="overflow:auto"><table id="fleetTable"><thead><tr>
+        <th>Device</th><th>Name</th><th>Status</th><th>Online</th><th>Last seen</th><th>Location</th><th>Battery</th><th>Event</th><th>IP</th><th>Firmware</th><th>Workflow</th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- SENSORS (local gateway extension) -->
+  <section class="tab" id="tab-sensors">
+    <div class="card" style="margin-bottom:14px"><h2>All camera feeds of this robot <span class="spacer"></span>
+      <span class="small muted" id="feedMeta"></span><button id="feedReload">↻</button></h2>
+      <div class="grid g3" id="feedGrid"></div>
+      <div class="note" style="margin-top:8px">Built-in feeds (front, tray-1, tray-2, mark) plus any custom feed a robot posts with
+        <span class="mono">POST /api/camera/frames?camera=&lt;name&gt;&amp;robotId=…</span> – e.g. extra laptop USB cameras from <b>laptop-robot.html</b>.</div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h2>Sensor streams <span class="spacer"></span><span class="pill" id="sseState"><span class="dot"></span><span>SSE –</span></span></h2>
+        <table id="sensorTable"><thead><tr><th>Kind</th><th>Readings</th><th>Last</th><th>Size</th></tr></thead><tbody></tbody></table>
+        <div class="note" id="sensorNote" style="margin-top:8px">Robots publish any JSON with <span class="mono">POST /api/bot/{id}/sensors/{kind}</span>.
+          The KettyBot app sends <b>tray-depth-0/1</b> (real tray depth camera data) while camera streaming is on; laptop-robot.html sends <b>vision</b>.
+          The Pudu SDK does not expose the LiDAR scan, odometry or pose to third-party apps – only the face, mark and tray cameras.</div>
+        <h2 style="margin-top:12px">Live events</h2>
+        <div class="log" id="sensorLog" style="max-height:200px"></div>
+      </div>
+      <div class="card"><h2>Reading <span class="mono" id="sensorKind" style="text-transform:none"></span><span class="spacer"></span>
+        <span class="small muted" id="sensorAt"></span></h2>
+        <canvas id="depthCanvas" style="width:100%;display:none;image-rendering:pixelated;border-radius:8px;background:#000"></canvas>
+        <div class="small muted" id="depthLegend" style="margin:4px 0 8px"></div>
+        <pre class="json" id="sensorJson">Select a sensor stream.</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- API -->
+  <section class="tab" id="tab-api">
+    <div class="grid g2">
+      <div class="card"><h2>Endpoints (GET, read-only)</h2>
+        <input id="epFilter" placeholder="filter endpoints…" style="width:100%;margin-bottom:8px">
+        <div style="max-height:620px;overflow:auto"><table id="epTable"><tbody></tbody></table></div>
+      </div>
+      <div class="card"><h2>Request</h2>
+        <div class="row"><select id="reqMethod"><option>GET</option></select>
+          <input id="reqPath" style="flex:1" spellcheck="false"><button id="reqSend" class="primary">Send</button></div>
+        <div class="row small muted" style="margin:8px 0" id="reqMeta"></div>
+        <div id="reqOut"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const DEFAULT_ACU = 'http://10.27.239.122:3000';
+  const DEFAULT_ROBOT = '8PP076724060001';
+  const CAMERAS = [
+    { id: 'front',  label: 'Front camera' },
+    { id: 'tray-1', label: 'Tray camera 1 (layer 0)' },
+    { id: 'tray-2', label: 'Tray camera 2 (layer 1)' },
+  ];
+  // Read-only endpoints from the hosted ACU's published OpenAPI spec (/swagger/v1/swagger.json).
+  const ENDPOINTS = [
+    ['/api/health', 'Health check'],
+    ['/api/acu/devices', 'All registered devices + workflow assignment'],
+    ['/api/acu/device-status/{robotId}', 'Latest telemetry snapshot (statusData)'],
+    ['/api/bot/registration-status/{robotId}', 'Registration state'],
+    ['/api/bot/instructions/{robotId}', 'Current instruction for the robot'],
+    ['/api/bot/workflow/{robotId}', 'Legacy workflow assigned to the device'],
+    ['/api/bot/destinations/{robotId}', 'Stored destination list'],
+    ['/api/acu/robots/{robotId}/cameras/front/latest', 'Latest front-camera JPEG (503 if stale)'],
+    ['/api/acu/robots/{robotId}/cameras/tray-1/latest', 'Latest tray-1 JPEG'],
+    ['/api/acu/robots/{robotId}/cameras/tray-2/latest', 'Latest tray-2 JPEG'],
+    ['/api/acu/robots/{robotId}/cameras/front/frames', 'Retained front frames, newest first'],
+    ['/api/acu/robots/{robotId}/cameras/tray-1/frames', 'Retained tray-1 frames'],
+    ['/api/acu/robots/{robotId}/cameras/tray-2/frames', 'Retained tray-2 frames'],
+    ['/api/acu/robots/{robotId}/cameras/front/stream', 'Front camera MJPEG stream'],
+    ['/api/acu/robots/{robotId}/cameras/tray-1/stream', 'Tray-1 MJPEG stream'],
+    ['/api/acu/robots/{robotId}/cameras/tray-2/stream', 'Tray-2 MJPEG stream'],
+    ['/api/camera/frames', 'All camera frames (all robots)'],
+    ['/api/camera/latest', 'Latest camera frame (prototype)'],
+    ['/api/acu/robots/{robotId}/microphone-clips', 'Microphone clips list'],
+    ['/api/acu/robots/{robotId}/microphone-clips/latest', 'Latest microphone WAV'],
+    ['/api/acu/settings', 'ACU settings'],
+    ['/api/acu/robot-workflows', 'Robot-schema workflows'],
+    ['/api/acu/robot-workflows/assignments', 'Robot workflow assignments'],
+    ['/api/bot/robot-workflows/{robotId}/workflow', 'Robot assignment in workflow.schema.json shape'],
+    ['/api/workflows', 'Legacy workflows'],
+    ['/api/workflows/assignments', 'Legacy device→workflow map'],
+    ['/api/acu/robots/{robotId}/cameras', 'Local gateway: all camera feeds incl. custom ones'],
+    ['/api/acu/robots/{robotId}/sensors', 'Local gateway: sensor streams of the robot'],
+    ['/api/acu/robots/{robotId}/sensors/tray-depth-0/latest', 'Local gateway: latest tray depth grid (layer 0)'],
+    ['/api/acu/robots/{robotId}/sensors/tray-depth-1/latest', 'Local gateway: latest tray depth grid (layer 1)'],
+    ['/api/acu/robots/{robotId}/sensors/vision/history', 'Local gateway: laptop vision metrics history'],
+  ];
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const qs = new URLSearchParams(location.search);
+  const state = {
+    acu: (qs.get('acu') || localStorage.getItem('rx.acu') || DEFAULT_ACU).replace(/\/+$/, ''),
+    robot: qs.get('robot') || localStorage.getItem('rx.robot') || DEFAULT_ROBOT,
+    paused: false, devices: [], device: null, prevFlat: {}, changedAt: {}, series: {}, timeline: [],
+    lastEventsSig: '', mic: [], micSeen: new Set(), hist: { frames: [], i: 0, timer: null },
+  };
+  const MAX_POINTS = 600;
+
+  // ---------- helpers ----------
+  async function api(path, { timeout = 6000, raw = false, method = 'GET', body } = {}) {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeout);
+    const t0 = performance.now();
+    try {
+      const res = await fetch(state.acu + path, { method, signal: ctl.signal, cache: 'no-store',
+        headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+      const ms = Math.round(performance.now() - t0);
+      if (raw) return { res, ms };
+      const text = await res.text();
+      let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!res.ok) { const e = new Error((data && (data.error || data.title)) || res.statusText); e.status = res.status; e.data = data; throw e; }
+      return data;
+    } finally { clearTimeout(t); }
+  }
+  const fmtTime = iso => iso ? new Date(iso).toLocaleTimeString() : '–';
+  const battOf = sd => sd.battery ?? sd.batteryPercent ?? null;
+  const fmtDate = iso => iso ? new Date(iso).toLocaleString() : '–';
+  function ago(iso) {
+    if (!iso) return '–';
+    const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return `${s.toFixed(0)} s ago`; if (s < 3600) return `${(s / 60).toFixed(0)} min ago`;
+    if (s < 86400) return `${(s / 3600).toFixed(1)} h ago`; return `${(s / 86400).toFixed(1)} d ago`;
+  }
+  function setPill(el, cls, text) { el.className = 'pill ' + cls; el.lastElementChild.textContent = text; }
+  function jsonHtml(v) {
+    const s = JSON.stringify(v, null, 2) ?? 'null';
+    return esc(s).replace(/(&quot;(?:\\.|[^&]|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g,
+      (m, str, colon, bool) => str ? (colon ? `<span class="j-k">${str}</span>${colon}` : `<span class="j-s">${str}</span>`)
+        : bool ? `<span class="j-b">${m}</span>` : m === 'null' ? `<span class="j-z">${m}</span>` : `<span class="j-n">${m}</span>`);
+  }
+  function flatten(obj, prefix = '', out = {}) {
+    if (obj === null || typeof obj !== 'object') { out[prefix] = obj; return out; }
+    const entries = Array.isArray(obj) ? obj.map((v, i) => [String(i), v]) : Object.entries(obj);
+    if (!entries.length) { out[prefix] = Array.isArray(obj) ? '[]' : '{}'; return out; }
+    for (const [k, v] of entries) flatten(v, prefix ? `${prefix}.${k}` : k, out);
+    return out;
+  }
+  function log(msg, cls = '') {
+    const box = $('#liveLog'); const d = document.createElement('div');
+    d.innerHTML = `<span class="t">${new Date().toLocaleTimeString()}</span><span class="${cls}">${esc(msg)}</span>`;
+    box.prepend(d); while (box.childElementCount > 400) box.lastElementChild.remove();
+  }
+
+  // ---------- tabs ----------
+  $('#tabs').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('active', x === b));
+    document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + b.dataset.tab));
+    if (b.dataset.tab === 'telemetry') drawCharts();
+    if (b.dataset.tab === 'control') { loadWorkflowList(); ctlCamTick(); }
+    if (b.dataset.tab === 'history' && !state.hist.frames.length) loadHistory();
+    if (b.dataset.tab === 'sensors') sensorsStart(); else sensorsStop();
+  });
+
+  // ---------- header controls ----------
+  $('#acuUrl').value = state.acu;
+  $('#acuUrl').addEventListener('change', e => {
+    state.acu = e.target.value.trim().replace(/\/+$/, ''); localStorage.setItem('rx.acu', state.acu);
+    resetRobotData(); restartCams(); pollAll(); renderLinks(); ctl.wfSig = ''; sensorsRestart();
+  });
+  $('#robotSel').addEventListener('change', e => selectRobot(e.target.value));
+  $('#pauseBtn').addEventListener('click', () => {
+    state.paused = !state.paused; $('#pauseBtn').textContent = state.paused ? '▶ Resume' : '⏸ Pause';
+    if (!state.paused) pollAll();
+  });
+  $('#pollSel').addEventListener('change', schedule);
+
+  function selectRobot(id) {
+    if (!id || id === state.robot) return;
+    state.robot = id; localStorage.setItem('rx.robot', id);
+    resetRobotData(); restartCams(); renderDevice(); pollAll(); ctl.wfSig = ''; ctl.lastAck = '';
+    state.hist.frames = []; if ($('#tab-history').classList.contains('active')) loadHistory();
+    sensorsRestart();
+  }
+  function resetRobotData() {
+    Object.assign(state, { device: null, prevFlat: {}, changedAt: {}, series: {}, timeline: [], lastEventsSig: '', mic: [], micSeen: new Set() });
+    $('#charts').innerHTML = ''; $('#liveLog').innerHTML = '';
+  }
+
+  // ---------- cameras ----------
+  const camEls = {};
+  function buildCams() {
+    $('#cams').innerHTML = CAMERAS.map(c => `
+      <div>
+        <div class="row" style="margin-bottom:6px"><b>${esc(c.label)}</b><span class="spacer"></span>
+          <span class="small muted" id="fps-${c.id}"></span>
+          <a class="small" id="open-${c.id}" target="_blank">open ↗</a>
+          <button class="small" data-fs="${c.id}">⛶</button></div>
+        <div class="cam" id="cam-${c.id}">
+          <img alt="">
+          <div class="empty">connecting…</div>
+          <div class="overlay"><span class="tag">…</span></div>
+          <div class="ts"></div>
+        </div>
+      </div>`).join('');
+    for (const c of CAMERAS) {
+      const root = $('#cam-' + c.id);
+      camEls[c.id] = { root, img: $('img', root), empty: $('.empty', root), tag: $('.tag', root), ts: $('.ts', root),
+        fps: $('#fps-' + c.id), open: $('#open-' + c.id), timer: null, retry: null, frames: 0, fpsT0: performance.now(), busy: false };
+    }
+    $('#cams').addEventListener('click', e => {
+      const id = e.target.dataset && e.target.dataset.fs; if (!id) return;
+      const el = camEls[id].root; (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+    });
+  }
+  function camBase(id) { return `${state.acu}/api/acu/robots/${encodeURIComponent(state.robot)}/cameras/${id}`; }
+  function camTag(c, cls, text) { c.tag.className = 'tag ' + cls; c.tag.textContent = text; }
+  function stopCam(c) {
+    clearInterval(c.timer); clearTimeout(c.retry); c.timer = c.retry = null;
+    c.img.onload = c.img.onerror = null; c.img.removeAttribute('src');
+  }
+  function restartCams() { for (const c of CAMERAS) startCam(c.id); }
+  function startCam(id) {
+    const c = camEls[id]; stopCam(c);
+    if (workspaceHidden) return;
+    const mode = $('#camMode').value;
+    c.open.href = camBase(id) + (mode === 'stream' ? '/stream' : '/latest');
+    c.empty.style.display = 'block'; c.empty.textContent = 'connecting…'; camTag(c, '', 'CONNECTING');
+    c.frames = 0; c.fpsT0 = performance.now();
+    if (mode === 'stream') {
+      c.img.onload = () => { c.empty.style.display = 'none'; camTag(c, 'live', '● LIVE MJPEG'); c.ts.textContent = new Date().toLocaleTimeString(); };
+      c.img.onerror = () => camOffline(id);
+      c.img.src = camBase(id) + '/stream?t=' + Date.now();
+      c.fps.textContent = '';
+    } else {
+      const tick = async () => {
+        if (c.busy || state.paused) return; c.busy = true;
+        try {
+          const { res } = await api(`/api/acu/robots/${encodeURIComponent(state.robot)}/cameras/${id}/latest`, { raw: true, timeout: 4000 });
+          if (!res.ok) { c.busy = false; return camOffline(id, res.status); }
+          const blob = await res.blob(); const url = URL.createObjectURL(blob);
+          const old = c.img.src; c.img.onload = () => old.startsWith('blob:') && URL.revokeObjectURL(old); c.img.src = url;
+          c.empty.style.display = 'none'; camTag(c, 'live', '● LIVE'); c.ts.textContent = new Date().toLocaleTimeString() + ` · ${(blob.size / 1024).toFixed(0)} KB`;
+          c.frames++; const dt = (performance.now() - c.fpsT0) / 1000;
+          if (dt > 3) { c.fps.textContent = (c.frames / dt).toFixed(1) + ' fps'; c.frames = 0; c.fpsT0 = performance.now(); }
+        } catch { camOffline(id); }
+        c.busy = false;
+      };
+      tick(); c.timer = setInterval(tick, +$('#camRate').value);
+    }
+  }
+  async function camOffline(id, status) {
+    if (workspaceHidden) return;
+    const c = camEls[id];
+    if ($('#camMode').value === 'stream') { c.img.onload = c.img.onerror = null; c.img.removeAttribute('src'); }
+    camTag(c, 'off', status === 503 ? '○ NO FRESH FRAMES' : '○ OFFLINE');
+    try {
+      const frames = await api(`/api/acu/robots/${encodeURIComponent(state.robot)}/cameras/${id}/frames`, { timeout: 4000 });
+      if (Array.isArray(frames) && frames.length) {
+        const f = frames[0];
+        if ($('#camMode').value === 'stream' || !c.img.src) c.img.src = state.acu + f.url;
+        c.empty.style.display = 'none';
+        camTag(c, 'stale', '◐ LAST FRAME'); c.ts.textContent = `${fmtDate(f.receivedAt)} (${ago(f.receivedAt)})`;
+      } else { c.empty.style.display = 'block'; c.empty.textContent = 'No frames from this camera yet'; c.ts.textContent = ''; }
+    } catch { c.empty.style.display = 'block'; c.empty.textContent = 'Camera endpoint unreachable'; }
+    if (!workspaceHidden && $('#camMode').value === 'stream' && !c.retry) c.retry = setTimeout(() => { c.retry = null; startCam(id); }, 5000);
+  }
+  $('#camMode').addEventListener('change', () => { $('#camRateWrap').style.display = $('#camMode').value === 'poll' ? '' : 'none'; restartCams(); });
+  $('#camRate').addEventListener('change', restartCams);
+  $('#camReload').addEventListener('click', restartCams);
+  $('#camRateWrap').style.display = 'none';
+
+  // ---------- devices / telemetry ----------
+  async function pollDevices() {
+    const t0 = performance.now();
+    try {
+      const devices = await api('/api/acu/devices');
+      setPill($('#healthPill'), 'ok', `ACU OK · ${Math.round(performance.now() - t0)} ms`);
+      state.devices = Array.isArray(devices) ? devices : [];
+      renderRobotSelect(); renderFleet();
+      const d = state.devices.find(x => x.deviceId === state.robot) || null;
+      ingest(d); renderDevice();
+    } catch (e) {
+      setPill($('#healthPill'), 'bad', 'ACU unreachable');
+      log(`ACU error: ${e.message}`, 'err');
+    }
+  }
+  function renderRobotSelect() {
+    const sel = $('#robotSel'); const ids = state.devices.map(d => d.deviceId);
+    if (!ids.includes(state.robot)) ids.unshift(state.robot);
+    const sig = ids.join('|') + state.devices.map(d => d.online).join();
+    if (sel.dataset.sig === sig) return; sel.dataset.sig = sig;
+    sel.innerHTML = ids.map(id => {
+      const d = state.devices.find(x => x.deviceId === id);
+      const label = d ? `${d.online ? '🟢' : '⚫'} ${d.name || id} (${id})` : `${id} (not registered)`;
+      return `<option value="${esc(id)}" ${id === state.robot ? 'selected' : ''}>${esc(label)}</option>`;
+    }).join('');
+  }
+  function ingest(d) {
+    const now = Date.now();
+    if (!d) { state.device = null; return; }
+    const prev = state.device; state.device = d;
+    const flat = flatten({ statusData: d.statusData || {} });
+    Object.assign(flat, {
+      'device.status': d.status, 'device.online': d.online, 'device.lastSeen': d.lastSeen,
+      'device.lastSeenLocation': d.lastSeenLocation, 'device.instructions': d.instructions,
+      'device.assignedWorkflowId': d.assignedWorkflowId, 'device.ip': d.ip, 'device.mac': d.mac,
+      'device.firmware': d.firmware, 'device.name': d.name, 'device.registeredAt': d.registeredAt,
+      'device.destinations.count': (d.destinations || []).length, 'device.recentEvents.count': (d.recentEvents || []).length,
+    });
+    for (const [k, v] of Object.entries(flat)) {
+      if (k in state.prevFlat && JSON.stringify(state.prevFlat[k]) !== JSON.stringify(v)) {
+        state.changedAt[k] = now;
+        if (!k.startsWith('device.lastSeen') || k === 'device.lastSeenLocation') log(`${k}: ${fmtVal(state.prevFlat[k])} → ${fmtVal(v)}`);
+      } else if (!(k in state.prevFlat)) state.changedAt[k] = state.changedAt[k] || now;
+      const num = typeof v === 'number' ? v : typeof v === 'boolean' ? +v : (typeof v === 'string' && v.trim() !== '' && !isNaN(+v) && k.startsWith('statusData') ? +v : null);
+      if (num !== null && isFinite(num)) pushPoint(k, now, num);
+    }
+    if (d.lastSeen) pushPoint('derived.secondsSinceLastSeen', now, Math.max(0, (now - new Date(d.lastSeen)) / 1000));
+    state.prevFlat = flat;
+    if (prev && prev.online !== d.online) log(`Robot is now ${d.online ? 'ONLINE' : 'OFFLINE'}`, d.online ? '' : 'err');
+    const sig = JSON.stringify(d.recentEvents || []);
+    if (sig !== state.lastEventsSig) {
+      if (state.lastEventsSig) { const last = (d.recentEvents || []).slice(-1)[0]; if (last) log(`event: ${last.event}`); }
+      state.lastEventsSig = sig;
+    }
+    state.timeline.push({ t: now, flat });
+    if (state.timeline.length > MAX_POINTS) state.timeline.shift();
+  }
+  const fmtVal = v => v === undefined ? '∅' : typeof v === 'string' ? v : JSON.stringify(v);
+  function pushPoint(k, t, v) {
+    const s = state.series[k] || (state.series[k] = []); s.push([t, v]); if (s.length > MAX_POINTS) s.shift();
+  }
+
+  function renderDevice() {
+    const d = state.device;
+    if (!d) {
+      setPill($('#robotPill'), 'bad', `${state.robot} not registered`);
+      $('#seenPill').textContent = 'last seen –';
+      $('#liveKv').innerHTML = $('#identKv').innerHTML = `<div><small>Robot</small><b>Not found on this ACU</b></div>`;
+      renderControl();
+      return;
+    }
+    const sd = d.statusData || {};
+    setPill($('#robotPill'), d.online ? 'ok' : (d.status === 'approved' ? 'warn' : 'bad'), `${d.name || d.deviceId} · ${d.online ? 'ONLINE' : 'OFFLINE'} · ${d.status}`);
+    $('#seenPill').textContent = 'last seen ' + ago(d.lastSeen);
+    const loc = d.lastSeenLocation || sd.location || sd.lastSeenLocation;
+    const kv = pairs => pairs.map(([k, v]) => `<div title="${esc(v)}"><small>${esc(k)}</small><b>${esc(v ?? '–')}</b></div>`).join('');
+    $('#liveKv').innerHTML = kv([
+      ['Online', d.online ? '🟢 yes' : '⚫ no'], ['Battery', battOf(sd) != null ? battOf(sd) + ' %' : '–'],
+      ['Event', sd.event], ['Location', loc], ['Last seen', ago(d.lastSeen)], ['Instruction', d.instructions || '–'],
+      ['Workflow', d.assignedWorkflowId || '–'], ['IP', d.ip],
+    ]);
+    $('#identKv').innerHTML = kv([
+      ['Device ID', d.deviceId], ['Name', d.name], ['Status', d.status], ['Online', String(d.online)], ['IP', d.ip], ['MAC', d.mac],
+      ['Firmware', d.firmware], ['Registered', fmtDate(d.registeredAt)], ['Last seen', fmtDate(d.lastSeen)],
+      ['Location', loc], ['Workflow', d.assignedWorkflowId], ['Destinations', (d.destinations || []).length],
+    ]);
+    const b = parseFloat(battOf(sd));
+    const bc = isNaN(b) ? 'var(--muted)' : b < 20 ? 'var(--bad)' : b < 45 ? 'var(--warn)' : 'var(--ok)';
+    $('#battBox').innerHTML = `
+      <div class="kv"><div><small>Battery</small><b>${isNaN(b) ? 'not reported' : b + ' %'}</b>
+        <div class="battery"><i style="width:${isNaN(b) ? 0 : Math.min(100, b)}%;background:${bc}"></i></div></div>
+      <div><small>Current event</small><b>${esc(sd.event ?? '–')}</b></div>
+      <div><small>statusData keys</small><b>${Object.keys(sd).length}</b></div>
+      <div><small>Samples recorded</small><b>${state.timeline.length}</b></div></div>`;
+    renderParams(); renderEvents(); renderMap(); renderControl();
+    $('#rawDevice').innerHTML = jsonHtml(d);
+    if ($('#tab-telemetry').classList.contains('active')) drawCharts();
+  }
+  function renderParams() {
+    const f = ($('#paramFilter').value || '').toLowerCase(); const now = Date.now();
+    const rows = Object.entries(state.prevFlat).filter(([k]) => !f || k.toLowerCase().includes(f)).sort(([a], [b]) => a.localeCompare(b));
+    $('#paramTable tbody').innerHTML = rows.map(([k, v]) => {
+      const ch = state.changedAt[k]; const fresh = ch && now - ch < 1800 && state.timeline.length > 1;
+      return `<tr class="${fresh ? 'flash' : ''}"><td class="mono">${esc(k)}</td><td class="mono">${esc(fmtVal(v))}</td>
+        <td class="small muted">${v === null ? 'null' : typeof v}</td><td class="small muted">${ch ? ago(new Date(ch).toISOString()) : ''}</td></tr>`;
+    }).join('') || '<tr><td colspan="4" class="muted">No parameters</td></tr>';
+  }
+  $('#paramFilter').addEventListener('input', renderParams);
+  function renderEvents() {
+    const ev = (state.device && state.device.recentEvents) || [];
+    $('#eventTable tbody').innerHTML = ev.slice().reverse().map(e =>
+      `<tr><td class="small">${fmtDate(e.receivedAt)}<br><span class="muted">${ago(e.receivedAt)}</span></td><td class="mono">${esc(e.event)}</td></tr>`).join('')
+      || '<tr><td colspan="2" class="muted">No events reported</td></tr>';
+  }
+
+  // ---------- charts ----------
+  function drawCharts() {
+    const keys = Object.keys(state.series).sort();
+    $('#chartInfo').textContent = `${keys.length} series · ${state.timeline.length} samples`;
+    const box = $('#charts');
+    for (const k of keys) {
+      let el = box.querySelector(`[data-k="${CSS.escape(k)}"]`);
+      if (!el) {
+        el = document.createElement('div'); el.className = 'chart'; el.dataset.k = k;
+        el.innerHTML = `<div class="h"><span class="mono">${esc(k)}</span><b></b></div><canvas></canvas><div class="h small"><span class="mn"></span><span class="mx"></span></div>`;
+        box.appendChild(el);
+      }
+      const s = state.series[k]; const last = s[s.length - 1][1];
+      el.querySelector('.h b').textContent = Number.isInteger(last) ? last : last.toFixed(2);
+      const vals = s.map(p => p[1]); const mn = Math.min(...vals), mx = Math.max(...vals);
+      el.querySelector('.mn').textContent = 'min ' + +mn.toFixed(2); el.querySelector('.mx').textContent = 'max ' + +mx.toFixed(2);
+      const cv = el.querySelector('canvas'); const dpr = devicePixelRatio || 1;
+      const w = cv.clientWidth || 240, h = 70; cv.width = w * dpr; cv.height = h * dpr;
+      const g = cv.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
+      const t0 = s[0][0], t1 = Math.max(s[s.length - 1][0], t0 + 1), span = mx - mn || 1;
+      const X = t => (t - t0) / (t1 - t0) * (w - 4) + 2, Y = v => h - 4 - (v - mn) / span * (h - 8);
+      g.strokeStyle = '#233142'; g.beginPath(); g.moveTo(0, h - 4); g.lineTo(w, h - 4); g.stroke();
+      const grad = g.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, '#00b3a455'); grad.addColorStop(1, '#00b3a400');
+      g.beginPath(); s.forEach(([t, v], i) => i ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v)));
+      g.strokeStyle = '#00b3a4'; g.lineWidth = 1.6; g.stroke();
+      g.lineTo(X(s[s.length - 1][0]), h); g.lineTo(X(t0), h); g.closePath(); g.fillStyle = grad; g.fill();
+    }
+    if (!keys.length) box.innerHTML = '<div class="muted">Waiting for numeric telemetry…</div>';
+    else box.querySelectorAll(':scope > div.muted').forEach(n => n.remove());
+  }
+  $('#exportCsv').addEventListener('click', () => {
+    const keys = [...new Set(state.timeline.flatMap(r => Object.keys(r.flat)))].sort();
+    const cell = v => { const s = v === undefined ? '' : typeof v === 'string' ? v : JSON.stringify(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const csv = ['timestamp,' + keys.join(','), ...state.timeline.map(r => [new Date(r.t).toISOString(), ...keys.map(k => cell(r.flat[k]))].join(','))].join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `telemetry-${state.robot}-${Date.now()}.csv`; a.click();
+  });
+
+  // ---------- map & workflow ----------
+  const TYPE_COLORS = { table: '#3d8bfd', usher: '#00b3a4', transit: '#f5a623', dining_outlet: '#c678dd' };
+  function renderMap() {
+    const d = state.device; const svg = $('#mapSvg'); const dest = (d && d.destinations) || [];
+    const loc = d && (d.lastSeenLocation || (d.statusData || {}).location);
+    $('#locInfo').textContent = loc ? `last seen at: ${loc}` : '';
+    $('#destTable tbody').innerHTML = dest.map(p => `<tr class="${p.name === loc ? 'sel' : ''}"><td>${esc(p.name)}</td><td>${esc(p.type)}</td>
+      <td class="mono">${p.x ?? '–'}</td><td class="mono">${p.y ?? '–'}</td><td class="mono">${p.z ?? '–'}</td></tr>`).join('')
+      || '<tr><td colspan="5" class="muted">The robot has not published any destinations</td></tr>';
+    const pts = dest.filter(p => typeof p.x === 'number' && typeof p.y === 'number');
+    if (!pts.length) { svg.innerHTML = '<text x="50%" y="50%" fill="#8296ad" text-anchor="middle">No coordinates</text>'; return; }
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    let [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const pad = Math.max(x1 - x0, y1 - y0, 2) * 0.15; x0 -= pad; x1 += pad; y0 -= pad; y1 += pad;
+    const W = svg.clientWidth || 600, H = 380, sc = Math.min(W / (x1 - x0), H / (y1 - y0));
+    const ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
+    const X = x => ox + (x - x0) * sc, Y = y => H - (oy + (y - y0) * sc);
+    let grid = '';
+    for (let gx = Math.ceil(x0); gx <= x1; gx++) grid += `<line x1="${X(gx)}" y1="0" x2="${X(gx)}" y2="${H}" stroke="#16202c"/>`;
+    for (let gy = Math.ceil(y0); gy <= y1; gy++) grid += `<line x1="0" y1="${Y(gy)}" x2="${W}" y2="${Y(gy)}" stroke="#16202c"/>`;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.innerHTML = grid + `<text x="8" y="${H - 8}" fill="#8296ad" font-size="11">1 grid = 1 m · x→ y↑</text>` + pts.map(p => {
+      const c = TYPE_COLORS[p.type] || '#dbe6f3', here = p.name === loc, cx = X(p.x), cy = Y(p.y);
+      const hd = typeof p.z === 'number' ? `<line x1="${cx}" y1="${cy}" x2="${cx + Math.cos(p.z) * 18}" y2="${cy - Math.sin(p.z) * 18}" stroke="${c}" stroke-width="2"/>` : '';
+      return `<g><title>${esc(p.name)} [${esc(p.type)}] x=${p.x} y=${p.y} z=${p.z ?? '–'}</title>
+        ${here ? `<circle cx="${cx}" cy="${cy}" r="16" fill="none" stroke="#2ecc71" stroke-width="2"><animate attributeName="r" values="10;20;10" dur="1.6s" repeatCount="indefinite"/></circle>` : ''}
+        ${hd}<circle cx="${cx}" cy="${cy}" r="7" fill="${c}"/>
+        <text x="${cx + 10}" y="${cy - 10}" fill="#dbe6f3" font-size="12">${esc(p.name)}</text></g>`;
+    }).join('');
+  }
+  async function pollWorkflow() {
+    try {
+      const [assign, settings] = await Promise.all([api('/api/acu/robot-workflows/assignments'), api('/api/acu/settings')]);
+      $('#settingsJson').innerHTML = jsonHtml(settings);
+      const wf = ((assign && assign.Workflows) || []).find(w => w.RobotId === state.robot);
+      let legacy = null;
+      if (!wf && state.device && state.device.assignedWorkflowId) {
+        try { legacy = await api(`/api/bot/workflow/${encodeURIComponent(state.robot)}`); } catch { /* none */ }
+      }
+      const w = wf || legacy;
+      if (!w) { $('#wfBox').innerHTML = '<span class="muted">No workflow assigned to this robot.</span>'; return; }
+      const steps = w.Steps || w.steps || [];
+      $('#wfBox').innerHTML = `<div class="kv" style="margin-bottom:8px">
+          <div><small>ID</small><b>${esc(w.WorkflowID || w.id)}</b></div><div><small>Name</small><b>${esc(w.WorkflowName || w.name || '–')}</b></div>
+          <div><small>Steps</small><b>${steps.length}</b></div><div><small>Source</small><b>${wf ? 'robot-workflows' : 'legacy'}</b></div></div>
+        ${w.Description ? `<div class="small muted" style="margin-bottom:6px">${esc(w.Description)}</div>` : ''}
+        ${steps.map((s, i) => `<div class="step"><div class="sid">${i + 1}. ${esc(s.StepId || s.id || '')} · ${esc(s.ScreenId || s.screenId || '')}</div>
+          <b>${esc(s.Title || s.title || '')}</b>${s.TTS ? `<div class="small">🔊 ${esc(s.TTS)}</div>` : ''}
+          ${s.Buttons ? `<div class="small muted mono">${esc(JSON.stringify(s.Buttons))}</div>` : ''}</div>`).join('')}
+        <details style="margin-top:8px"><summary class="small muted">raw JSON</summary><pre class="json">${jsonHtml(w)}</pre></details>`;
+    } catch (e) { $('#wfBox').innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+  }
+  $('#instrSend').addEventListener('click', async () => {
+    const cmd = $('#instrInput').value.trim(); if (!cmd) return;
+    if (!confirm(`Send instruction "${cmd}" to ${state.robot} on the shared ACU?`)) return;
+    try { const r = await api(`/api/acu/instructions/${encodeURIComponent(state.robot)}`, { method: 'POST', body: { command: cmd } });
+      $('#instrOut').innerHTML = `<span style="color:var(--ok)">${esc(JSON.stringify(r))}</span>`; log(`instruction sent: ${cmd}`);
+    } catch (e) { $('#instrOut').innerHTML = `<span class="err">${e.status || ''} ${esc(e.message)}</span>`; }
+  });
+
+  // ---------- control ----------
+  const PHRASES = ['Please follow me.', 'Please wait here, the technician will be with you shortly.',
+    'Your CT scan is complete. Thank you!', 'Hello! I am your CT companion robot.'];
+  const ctl = { sent: [], lastAck: '', wfSig: '', camTimer: null, camBusy: false };
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  function ctlLog(msg, cls = '') {
+    const div = document.createElement('div'); if (cls) div.className = cls;
+    div.innerHTML = `<span class="t">${new Date().toLocaleTimeString()}</span>${esc(msg)}`;
+    $('#ctlLog').prepend(div); while ($('#ctlLog').childElementCount > 200) $('#ctlLog').lastElementChild.remove();
+  }
+  async function sendCommand(action, fields = {}) {
+    const d = state.device;
+    if (!d) return ctlLog(`✖ ${state.robot} is not registered on this ACU`, 'err');
+    if (d.status !== 'approved') return ctlLog('✖ Approve the robot first', 'err');
+    if (!d.online) return ctlLog('✖ Robot is offline – the ACU only accepts commands for online robots', 'err');
+    const cmd = { id: newId(), action, ...fields, sentAt: new Date().toISOString() };
+    try {
+      await api(`/api/acu/instructions/${encodeURIComponent(state.robot)}`, { method: 'POST', body: { command: JSON.stringify(cmd) } });
+      ctl.sent.push(cmd); ctlLog(`→ ${action} ${fields.destination || fields.text || (fields.on === true ? 'on' : fields.on === false ? 'off' : '')}  [${cmd.id}]`);
+    } catch (e) { ctlLog(`✖ ${action}: ${e.status || ''} ${e.message}`, 'err'); }
+  }
+  function renderControl() {
+    const d = state.device, sd = (d && d.statusData) || {};
+    const lc = sd.lastCommand, up = sd.cameraUpload || {};
+    $('#ctlKv').innerHTML = d ? [
+      ['Status', d.status], ['Online', d.online ? '🟢 yes' : '⚫ no'], ['Last seen', ago(d.lastSeen)],
+      ['Location', d.lastSeenLocation || '–'], ['Navigating to', sd.navigationTarget || '–'],
+      ['Battery', battOf(sd) != null ? `${battOf(sd)} %${sd.charging ? ' ⚡' : ''}` : '–'],
+      ['Wi-Fi', sd.wifiRssi != null ? `${sd.wifiRssi} dBm` : '–'],
+      ['Camera upload', up.active ? `on · ${up.sent} sent${up.failed ? ` · ${up.failed} failed` : ''}` : 'off'],
+      ['Last command', lc ? `${lc.action} · ${lc.status}` : '–'],
+    ].map(([k, v]) => `<div title="${esc(v)}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join('')
+      : '<div><small>Robot</small><b>Not registered on this ACU</b></div>';
+    $('#ctlApprove').disabled = !d || d.status === 'approved';
+    $('#ctlReject').disabled = !d || d.status === 'rejected';
+    const sel = $('#ctlDest'), dests = ((d && d.destinations) || []).map(x => x.name);
+    const sig = dests.join('|');
+    if (sel.dataset.sig !== sig) {
+      const keep = sel.value; sel.dataset.sig = sig;
+      sel.innerHTML = dests.length ? dests.map(n => `<option ${n === keep ? 'selected' : ''}>${esc(n)}</option>`).join('')
+        : '<option value="">(robot has not published destinations)</option>';
+    }
+    if (lc) {
+      const key = `${lc.id}|${lc.status}|${lc.at}`;
+      if (key !== ctl.lastAck) {
+        ctl.lastAck = key;
+        ctlLog(`← ${lc.action} ${lc.status}${lc.message ? ': ' + lc.message : ''}  [${lc.id}]`, lc.status === 'failed' ? 'err' : '');
+      }
+      $('#ctlLast').textContent = `ack ${ago(lc.at)}`;
+    }
+  }
+  async function loadWorkflowList() {
+    try {
+      const [list, assign] = await Promise.all([api('/api/acu/robot-workflows'), api('/api/acu/robot-workflows/assignments')]);
+      const wfs = Array.isArray(list) ? list : [];
+      const cur = ((assign && assign.Workflows) || []).find(w => w.RobotId === state.robot);
+      const sig = wfs.map(w => w.WorkflowID).join('|') + '#' + (cur ? cur.WorkflowID : '');
+      if (sig !== ctl.wfSig) {
+        ctl.wfSig = sig;
+        $('#ctlWf').innerHTML = wfs.map(w => `<option value="${esc(w.WorkflowID)}" ${cur && cur.WorkflowID === w.WorkflowID ? 'selected' : ''}>${esc(w.WorkflowName || w.WorkflowID)}</option>`).join('')
+          || '<option value="">(no workflows yet – create one in the editor)</option>';
+      }
+      $('#ctlWfInfo').innerHTML = cur ? `Assigned: <b>${esc(cur.WorkflowName || cur.WorkflowID)}</b>` : '<span class="muted">No workflow assigned to this robot.</span>';
+    } catch (e) { $('#ctlWfInfo').innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+  }
+  async function ctlCamTick() {
+    if (ctl.camBusy || !$('#tab-control').classList.contains('active')) return;
+    ctl.camBusy = true;
+    try {
+      const { res } = await api(`/api/acu/robots/${encodeURIComponent(state.robot)}/cameras/front/latest`, { raw: true, timeout: 4000 });
+      if (res.ok) {
+        const url = URL.createObjectURL(await res.blob()); const img = $('#ctlCamImg');
+        const old = img.src; img.src = url; if (old.startsWith('blob:')) URL.revokeObjectURL(old);
+        $('#ctlCamTs').textContent = 'live · ' + new Date().toLocaleTimeString();
+      } else $('#ctlCamTs').textContent = res.status === 503 ? 'no fresh front frames' : `HTTP ${res.status}`;
+    } catch { $('#ctlCamTs').textContent = 'camera endpoint unreachable'; }
+    ctl.camBusy = false;
+  }
+  function editorUrl() {
+    let host = 'localhost'; try { host = new URL(state.acu).hostname; } catch { /* keep */ }
+    return localStorage.getItem('rx.editor') || `http://${host === '127.0.0.1' ? 'localhost' : host}:3100`;
+  }
+  function renderLinks() {
+    $('#ctlEditorUrl').value = editorUrl(); $('#ctlEditor').href = editorUrl(); $('#ctlDocs').href = state.acu + '/docs';
+  }
+  $('#ctlEditorUrl').addEventListener('change', e => { const v = e.target.value.trim().replace(/\/+$/, '');
+    v ? localStorage.setItem('rx.editor', v) : localStorage.removeItem('rx.editor'); renderLinks(); });
+  $('#ctlApprove').addEventListener('click', async () => {
+    try { await api(`/api/acu/accept/${encodeURIComponent(state.robot)}`, { method: 'POST' }); ctlLog(`✔ approved ${state.robot}`); pollDevices(); }
+    catch (e) { ctlLog(`✖ approve: ${e.message}`, 'err'); }
+  });
+  $('#ctlReject').addEventListener('click', async () => {
+    if (!confirm(`Reject ${state.robot}? It will stop receiving commands.`)) return;
+    try { await api(`/api/acu/reject/${encodeURIComponent(state.robot)}`, { method: 'POST' }); ctlLog(`rejected ${state.robot}`); pollDevices(); }
+    catch (e) { ctlLog(`✖ reject: ${e.message}`, 'err'); }
+  });
+  $('#ctlPing').addEventListener('click', () => sendCommand('ping'));
+  $('#ctlGo').addEventListener('click', () => {
+    const destination = $('#ctlDestFree').value.trim() || $('#ctlDest').value;
+    if (!destination) return ctlLog('✖ choose a destination', 'err');
+    sendCommand('navigate', { destination });
+  });
+  $('#ctlCancel').addEventListener('click', () => sendCommand('cancel'));
+  $('#ctlSayBtn').addEventListener('click', () => {
+    const text = $('#ctlSay').value.trim(); if (!text) return;
+    sendCommand('say', $('#ctlLang').value ? { text, lang: $('#ctlLang').value } : { text });
+  });
+  $('#ctlHush').addEventListener('click', () => sendCommand('stopSpeech'));
+  $('#ctlPhrases').innerHTML = PHRASES.map(p => `<button class="small" data-p="${esc(p)}">${esc(p.length > 28 ? p.slice(0, 26) + '…' : p)}</button>`).join('');
+  $('#ctlPhrases').addEventListener('click', e => { const b = e.target.closest('button[data-p]'); if (b) $('#ctlSay').value = b.dataset.p; });
+  $('#ctlCamOn').addEventListener('click', () => sendCommand('camera', { on: true, face: $('#ctlFace').checked, intervalMs: +$('#ctlCamRate').value }));
+  $('#ctlCamOff').addEventListener('click', () => sendCommand('camera', { on: false }));
+  $('#ctlWfAssign').addEventListener('click', async () => {
+    const id = $('#ctlWf').value; if (!id) return;
+    try { await api(`/api/acu/robot-workflows/${encodeURIComponent(id)}/assignments/${encodeURIComponent(state.robot)}`, { method: 'POST' });
+      ctlLog(`✔ workflow ${id} assigned`); ctl.wfSig = ''; loadWorkflowList(); }
+    catch (e) { ctlLog(`✖ assign: ${e.status || ''} ${e.message}`, 'err'); }
+  });
+  $('#ctlWfClear').addEventListener('click', async () => {
+    try { await api(`/api/acu/robot-workflows/assignments/${encodeURIComponent(state.robot)}`, { method: 'DELETE' });
+      ctlLog('workflow unassigned'); ctl.wfSig = ''; loadWorkflowList(); }
+    catch (e) { ctlLog(`✖ unassign: ${e.status || ''} ${e.message}`, 'err'); }
+  });
+
+  // ---------- microphone ----------
+  async function pollMic() {
+    try {
+      const clips = await api(`/api/acu/robots/${encodeURIComponent(state.robot)}/microphone-clips`);
+      state.mic = Array.isArray(clips) ? clips : [];
+      const fresh = state.mic.filter(c => !state.micSeen.has(c.id));
+      const first = state.micSeen.size === 0; state.mic.forEach(c => state.micSeen.add(c.id));
+      $('#micTable tbody').innerHTML = state.mic.map(c => {
+        const url = state.acu + (c.downloadUrl || `/api/acu/robots/${encodeURIComponent(state.robot)}/microphone-clips/${c.id}`);
+        return `<tr><td>${fmtDate(c.receivedAt)}<br><span class="small muted">${ago(c.receivedAt)}</span></td><td>${c.durationSeconds ?? '–'} s</td>
+          <td class="small mono">${c.sampleRate} Hz · ${c.channels} ch · ${c.bitsPerSample} bit</td>
+          <td><audio controls preload="none" src="${esc(url)}" data-id="${esc(c.id)}"></audio> <a class="small" href="${esc(url)}" target="_blank">⬇</a></td></tr>`;
+      }).join('') || '<tr><td colspan="4" class="muted">No microphone clips shared by this robot</td></tr>';
+      if (!first && fresh.length) {
+        log(`🎙 ${fresh.length} new microphone clip(s)`);
+        if ($('#autoPlay').checked) { const a = $(`#micTable audio[data-id="${CSS.escape(fresh[0].id)}"]`); a && a.play().catch(() => {}); }
+      }
+    } catch (e) { $('#micTable tbody').innerHTML = `<tr><td colspan="4" class="err">${esc(e.message)}</td></tr>`; }
+  }
+  $('#micReload').addEventListener('click', pollMic);
+
+  // ---------- fleet ----------
+  function renderFleet() {
+    $('#fleetTable tbody').innerHTML = state.devices.map(d => {
+      const sd = d.statusData || {};
+      return `<tr class="clickable ${d.deviceId === state.robot ? 'sel' : ''}" data-id="${esc(d.deviceId)}">
+        <td class="mono">${esc(d.deviceId)}</td><td>${esc(d.name)}</td><td>${esc(d.status)}</td><td>${d.online ? '🟢' : '⚫'}</td>
+        <td class="small">${ago(d.lastSeen)}</td><td>${esc(d.lastSeenLocation || sd.location || '–')}</td>
+        <td>${battOf(sd) != null ? esc(battOf(sd)) + ' %' : '–'}</td><td class="mono">${esc(sd.event || '–')}</td>
+        <td class="mono">${esc(d.ip)}</td><td class="small">${esc(d.firmware)}</td><td class="small mono">${esc(d.assignedWorkflowId || '–')}</td></tr>`;
+    }).join('') || '<tr><td colspan="11" class="muted">No devices</td></tr>';
+  }
+  $('#fleetTable').addEventListener('click', e => { const tr = e.target.closest('tr[data-id]'); if (tr) selectRobot(tr.dataset.id); });
+
+  // ---------- frame history ----------
+  async function loadHistory() {
+    stopHist();
+    const cam = $('#histCam').value;
+    try {
+      const frames = await api(`/api/acu/robots/${encodeURIComponent(state.robot)}/cameras/${cam}/frames`);
+      state.hist.frames = (Array.isArray(frames) ? frames : []).slice().reverse(); // oldest → newest
+    } catch (e) { state.hist.frames = []; $('#histPos').textContent = e.message; }
+    const n = state.hist.frames.length;
+    $('#histSlider').max = Math.max(0, n - 1);
+    $('#histTable tbody').innerHTML = state.hist.frames.map((f, i) => `<tr class="clickable" data-i="${i}"><td>${i + 1}</td>
+      <td class="small">${fmtDate(f.receivedAt)}</td><td>${(f.bytes / 1024).toFixed(1)} KB</td>
+      <td class="small mono">${esc(f.camera || '')}${f.location != null ? ' · layer ' + f.location : ''}</td></tr>`).reverse().join('')
+      || '<tr><td colspan="4" class="muted">No retained frames</td></tr>';
+    showHist(Math.max(0, n - 1));
+  }
+  function showHist(i) {
+    const fr = state.hist.frames; if (!fr.length) { $('#histImg').removeAttribute('src'); $('#histTs').textContent = 'no frames'; $('#histPos').textContent = ''; return; }
+    i = Math.max(0, Math.min(fr.length - 1, i)); state.hist.i = i; const f = fr[i];
+    $('#histImg').src = state.acu + f.url; $('#histDl').href = state.acu + f.url;
+    $('#histTs').textContent = `${fmtDate(f.receivedAt)} · ${(f.bytes / 1024).toFixed(1)} KB`;
+    $('#histSlider').value = i; $('#histPos').textContent = `${i + 1} / ${fr.length}`;
+    document.querySelectorAll('#histTable tr.sel').forEach(r => r.classList.remove('sel'));
+    const row = $(`#histTable tr[data-i="${i}"]`); row && row.classList.add('sel');
+  }
+  function stopHist() { clearTimeout(state.hist.timer); state.hist.timer = null; $('#histPlay').textContent = '▶ Play'; }
+  function playHist() {
+    const fr = state.hist.frames; if (fr.length < 2) return;
+    if (state.hist.i >= fr.length - 1) showHist(0);
+    $('#histPlay').textContent = '⏸ Pause';
+    const step = () => {
+      const i = state.hist.i; if (i >= fr.length - 1) return stopHist();
+      // Replay at the real capture cadence, scaled by the speed selector.
+      const gap = Math.min(3000, Math.max(30, new Date(fr[i + 1].receivedAt) - new Date(fr[i].receivedAt))) / +$('#histSpeed').value;
+      state.hist.timer = setTimeout(() => { showHist(i + 1); step(); }, gap);
+    };
+    step();
+  }
+  $('#histLoad').addEventListener('click', loadHistory);
+  $('#histCam').addEventListener('change', loadHistory);
+  $('#histPlay').addEventListener('click', () => state.hist.timer ? stopHist() : playHist());
+  $('#histPrev').addEventListener('click', () => { stopHist(); showHist(state.hist.i - 1); });
+  $('#histNext').addEventListener('click', () => { stopHist(); showHist(state.hist.i + 1); });
+  $('#histSlider').addEventListener('input', e => { stopHist(); showHist(+e.target.value); });
+  $('#histTable').addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (tr) { stopHist(); showHist(+tr.dataset.i); } });
+
+  // ---------- sensors & all camera feeds (local gateway extension) ----------
+  const sens = { es: null, timer: null, feedTimer: null, kind: '', list: [], feeds: {}, busy: false };
+  const robotPath = () => `/api/acu/robots/${encodeURIComponent(state.robot)}`;
+  function sensorsActive() { return $('#tab-sensors').classList.contains('active'); }
+  function sensorsStart() {
+    if (sens.timer || workspaceHidden) return;
+    loadSensors(); loadFeeds(); openSse();
+    sens.timer = setInterval(() => !state.paused && (loadSensors(), loadFeeds()), 3000);
+    sens.feedTimer = setInterval(() => !state.paused && refreshFeedImages(), 1000);
+  }
+  function sensorsStop() {
+    clearInterval(sens.timer); clearInterval(sens.feedTimer); sens.timer = sens.feedTimer = null;
+    if (sens.es) { sens.es.close(); sens.es = null; }
+    setPill($('#sseState'), '', 'SSE –');
+  }
+  function sensorsRestart() {
+    sensorsStop(); sens.kind = ''; sens.feeds = {}; $('#feedGrid').innerHTML = '';
+    $('#sensorLog').innerHTML = ''; $('#sensorJson').textContent = 'Select a sensor stream.';
+    $('#depthCanvas').style.display = 'none'; $('#depthLegend').textContent = ''; $('#sensorKind').textContent = '';
+    if (sensorsActive()) sensorsStart();
+  }
+  function openSse() {
+    if (sens.es) sens.es.close();
+    const es = new EventSource(`${state.acu}${robotPath()}/sensors/stream`);
+    sens.es = es;
+    es.onopen = () => setPill($('#sseState'), 'ok', 'SSE live');
+    es.onerror = () => setPill($('#sseState'), 'warn', es.readyState === 2 ? 'SSE closed' : 'SSE reconnecting');
+    es.onmessage = onSse;
+    // Named events (event: <kind>) don't reach onmessage, so listen to every kind we see.
+    sens.listening = new Set();
+  }
+  function listenKind(kind) {
+    if (!sens.es || sens.listening.has(kind)) return;
+    sens.listening.add(kind); sens.es.addEventListener(kind, onSse);
+  }
+  function onSse(e) {
+    let r; try { r = JSON.parse(e.data); } catch { return; }
+    const box = $('#sensorLog'); const d = document.createElement('div');
+    d.innerHTML = `<span class="t">${new Date(r.receivedAt).toLocaleTimeString()}</span><b>${esc(r.kind)}</b> #${r.seq} <span class="muted">${esc(JSON.stringify(r.data).slice(0, 90))}</span>`;
+    box.prepend(d); while (box.childElementCount > 100) box.lastElementChild.remove();
+    if (!sens.kind) selectSensor(r.kind);
+    if (r.kind === sens.kind) showReading(r);
+  }
+  async function loadSensors() {
+    try {
+      const list = await api(`${robotPath()}/sensors`, { timeout: 4000 });
+      sens.list = Array.isArray(list) ? list : [];
+      $('#sensorNote').classList.remove('err');
+    } catch (e) {
+      sens.list = [];
+      $('#sensorTable tbody').innerHTML = `<tr><td colspan="4" class="muted">${e.status === 404
+        ? 'This ACU has no sensor API – it exists only on the local laptop gateway (ApiGateway, port 3000).'
+        : esc('Unavailable: ' + e.message)}</td></tr>`;
+      return;
+    }
+    sens.list.forEach(s => listenKind(s.kind));
+    $('#sensorTable tbody').innerHTML = sens.list.length ? sens.list.map(s => `
+      <tr class="clickable ${s.kind === sens.kind ? 'sel' : ''}" data-kind="${esc(s.kind)}">
+        <td class="mono">${s.fresh ? '🟢' : '⚪'} ${esc(s.kind)}</td><td>${s.count}</td>
+        <td>${esc(ago(s.lastAt))}</td><td>${(s.lastBytes / 1024).toFixed(1)} KB</td></tr>`).join('')
+      : '<tr><td colspan="4" class="muted">No sensor data from this robot yet.</td></tr>';
+    if (!sens.kind && sens.list.length) selectSensor(sens.list[0].kind);
+  }
+  $('#sensorTable').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-kind]'); if (tr) selectSensor(tr.dataset.kind);
+  });
+  async function selectSensor(kind) {
+    sens.kind = kind; $('#sensorKind').textContent = kind;
+    document.querySelectorAll('#sensorTable tr[data-kind]').forEach(tr => tr.classList.toggle('sel', tr.dataset.kind === kind));
+    try { showReading(await api(`${robotPath()}/sensors/${encodeURIComponent(kind)}/latest`, { timeout: 4000 })); }
+    catch (e) { $('#sensorJson').textContent = 'Unavailable: ' + e.message; }
+  }
+  function showReading(r) {
+    $('#sensorAt').textContent = `#${r.seq} · ${fmtTime(r.receivedAt)}`;
+    const d = r.data || {};
+    const grid = Array.isArray(d.values) && d.cols > 0 && d.rows > 0 && d.values.length === d.cols * d.rows;
+    $('#depthCanvas').style.display = grid ? 'block' : 'none';
+    if (grid) drawGrid(d);
+    else $('#depthLegend').textContent = '';
+    const shown = grid ? { ...d, values: `[${d.values.length} values – drawn above]` } : d;
+    $('#sensorJson').innerHTML = jsonHtml({ ...r, data: shown });
+  }
+  function drawGrid(d) {
+    const cv = $('#depthCanvas'); cv.width = d.cols; cv.height = d.rows;
+    const ctx = cv.getContext('2d'); const img = ctx.createImageData(d.cols, d.rows);
+    const nums = d.values.filter(v => typeof v === 'number');
+    const lo = d.min ?? Math.min(...nums), hi = d.max ?? Math.max(...nums), span = (hi - lo) || 1;
+    d.values.forEach((v, i) => {
+      const o = i * 4;
+      if (typeof v !== 'number') { img.data[o + 3] = 255; return; }
+      const t = Math.max(0, Math.min(1, (v - lo) / span));
+      // near = warm, far = cool
+      img.data[o] = 255 * (1 - t); img.data[o + 1] = 255 * (1 - Math.abs(t - 0.5) * 2); img.data[o + 2] = 255 * t; img.data[o + 3] = 255;
+    });
+    ctx.putImageData(img, 0, 0);
+    const center = d.values[Math.floor(d.rows / 2) * d.cols + Math.floor(d.cols / 2)];
+    $('#depthLegend').textContent = `${d.cols}×${d.rows} grid (source ${d.srcCols ?? '?'}×${d.srcRows ?? '?'}) · min ${+lo.toFixed(4)} · max ${+hi.toFixed(4)}`
+      + (typeof center === 'number' ? ` · centre ${+center.toFixed(4)}` : '') + ' · red = low value, blue = high (raw SDK units)';
+  }
+  async function loadFeeds() {
+    let feeds;
+    try { feeds = await api(`${robotPath()}/cameras`, { timeout: 4000 }); }
+    catch (e) {
+      $('#feedMeta').textContent = e.status === 404 ? 'feed list needs the local gateway' : 'unavailable';
+      return;
+    }
+    if (!Array.isArray(feeds)) return;
+    $('#feedMeta').textContent = `${feeds.length} feed(s)`;
+    for (const f of feeds) {
+      let el = sens.feeds[f.feed];
+      if (!el) {
+        const div = document.createElement('div');
+        div.innerHTML = `<div class="row" style="margin-bottom:6px"><b class="mono">${esc(f.feed)}</b><span class="spacer"></span>
+          <a class="small" target="_blank" href="${esc(state.acu + f.stream)}">MJPEG ↗</a></div>
+          <div class="cam"><img alt=""><div class="overlay"><span class="tag">…</span></div><div class="ts"></div></div>`;
+        $('#feedGrid').appendChild(div);
+        el = sens.feeds[f.feed] = { img: $('img', div), tag: $('.tag', div), ts: $('.ts', div), busy: false };
+      }
+      el.info = f;
+      el.tag.className = 'tag ' + (f.fresh ? 'live' : 'stale'); el.tag.textContent = f.fresh ? '● LIVE' : '◐ LAST FRAME';
+      if (!f.fresh) { el.ts.textContent = `${fmtTime(f.latest.receivedAt)} (${ago(f.latest.receivedAt)})`; if (!el.img.src) el.img.src = state.acu + f.latest.url; }
+    }
+    refreshFeedImages();
+  }
+  async function refreshFeedImages() {
+    for (const [feed, el] of Object.entries(sens.feeds)) {
+      if (el.busy || !el.info || !el.info.fresh) continue;
+      el.busy = true;
+      try {
+        const { res } = await api(`${robotPath()}/cameras/${feed}/latest`, { raw: true, timeout: 4000 });
+        if (res.ok) {
+          const blob = await res.blob(); const url = URL.createObjectURL(blob);
+          const old = el.img.src; el.img.onload = () => old.startsWith('blob:') && URL.revokeObjectURL(old); el.img.src = url;
+          el.ts.textContent = new Date().toLocaleTimeString() + ` · ${(blob.size / 1024).toFixed(0)} KB`;
+        }
+      } catch { /* next tick */ }
+      el.busy = false;
+    }
+  }
+  $('#feedReload').addEventListener('click', () => { sens.feeds = {}; $('#feedGrid').innerHTML = ''; loadFeeds(); });
+
+  // ---------- API explorer ----------
+  function renderEndpoints() {
+    const f = $('#epFilter').value.toLowerCase();
+    $('#epTable tbody').innerHTML = ENDPOINTS.filter(([p, d]) => !f || (p + d).toLowerCase().includes(f)).map(([p, d]) =>
+      `<tr class="clickable" data-p="${esc(p)}"><td><span class="mono">GET ${esc(p)}</span><br><span class="small muted">${esc(d)}</span></td></tr>`).join('');
+  }
+  $('#epFilter').addEventListener('input', renderEndpoints);
+  $('#epTable').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-p]'); if (!tr) return;
+    $('#reqPath').value = tr.dataset.p.replace('{robotId}', encodeURIComponent(state.robot)); sendReq();
+  });
+  $('#reqSend').addEventListener('click', sendReq);
+  $('#reqPath').addEventListener('keydown', e => e.key === 'Enter' && sendReq());
+  async function sendReq() {
+    const path = $('#reqPath').value.trim(); if (!path) return;
+    const out = $('#reqOut'); out.innerHTML = '<span class="muted">loading…</span>';
+    if (/\/stream(\?|$)/.test(path)) {
+      $('#reqMeta').textContent = 'MJPEG stream (rendered as image)';
+      out.innerHTML = `<div class="cam"><img src="${esc(state.acu + path)}"></div>`; return;
+    }
+    try {
+      const { res, ms } = await api(path, { raw: true, timeout: 10000 });
+      const ct = res.headers.get('content-type') || '';
+      const blob = await res.blob();
+      $('#reqMeta').innerHTML = `<span class="pill ${res.ok ? 'ok' : 'bad'}"><span class="dot"></span>${res.status} ${esc(res.statusText)}</span>
+        <span>${ms} ms</span><span>${esc(ct)}</span><span>${(blob.size / 1024).toFixed(1)} KB</span>
+        <a href="${esc(state.acu + path)}" target="_blank">open ↗</a>`;
+      if (ct.startsWith('image/')) out.innerHTML = `<div class="cam"><img src="${URL.createObjectURL(blob)}"></div>`;
+      else if (ct.startsWith('audio/') || ct.includes('wav')) out.innerHTML = `<audio controls src="${URL.createObjectURL(blob)}"></audio>`;
+      else {
+        const text = await blob.text(); let parsed; try { parsed = JSON.parse(text); } catch { parsed = undefined; }
+        out.innerHTML = `<pre class="json">${parsed !== undefined ? jsonHtml(parsed) : esc(text)}</pre>`;
+      }
+    } catch (e) { $('#reqMeta').textContent = ''; out.innerHTML = `<span class="err">${esc(e.name === 'AbortError' ? 'Timeout' : e.message)}</span>`; }
+  }
+
+  // ---------- scheduler ----------
+  let timers = [];
+  let workspaceHidden = false;
+  window.addEventListener('message', event => {
+    if (event.origin !== location.origin || event.source !== parent
+        || event.data?.type !== 'ct-workspace-visibility') return;
+    const hidden = !event.data.visible;
+    if (hidden === workspaceHidden) return;
+    workspaceHidden = hidden;
+    if (workspaceHidden) {
+      timers.forEach(clearInterval);
+      Object.values(camEls).forEach(stopCam);
+      sensorsStop(); stopHist();
+    } else {
+      schedule(); restartCams();
+      if (!state.paused) pollAll();
+      if (sensorsActive()) sensorsStart();
+    }
+  });
+  function schedule() {
+    timers.forEach(clearInterval);
+    const p = +$('#pollSel').value;
+    timers = [
+      setInterval(() => !state.paused && pollDevices(), p),
+      setInterval(() => !state.paused && pollWorkflow(), 15000),
+      setInterval(() => !state.paused && pollMic(), 10000),
+      setInterval(() => !state.paused && ctlCamTick(), 1000),
+      setInterval(() => !state.paused && $('#tab-control').classList.contains('active') && loadWorkflowList(), 15000),
+      setInterval(() => { if (state.device) $('#seenPill').textContent = 'last seen ' + ago(state.device.lastSeen); }, 1000),
+    ];
+  }
+  async function pollAll() { await pollDevices(); pollWorkflow(); pollMic(); }
+  $('#clearLog').addEventListener('click', () => { $('#liveLog').innerHTML = ''; });
+  window.addEventListener('resize', () => { renderMap(); drawCharts(); });
+
+  buildCams(); renderEndpoints(); renderRobotSelect(); renderLinks();
+  pollAll().then(restartCams); schedule();
+  log(`Connecting to ${state.acu} for robot ${state.robot}`);
+})();
+</script>
+</body>
+</html>

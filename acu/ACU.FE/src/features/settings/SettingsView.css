@@ -1,0 +1,232 @@
+/* =========================================================
+   Settings feature.
+
+   Shared primitives composed from ui.css:
+   - `.surface-card` on .settings-card and .about-card
+
+   Contents
+   --------
+   1. Settings tab strip (App | About)
+   2. Settings card layout
+   3. Settings rows
+   4. Language pill toggle (EN | DE)
+   5. About panel (System Information card + tagline)
+   ========================================================= */
+
+
+/* =========================================================
+   1. SETTINGS TAB STRIP (App | About)
+   Page-level tablist. Mirrors .detail-tabs from DevicesView
+   but is scoped to this view so the two patterns can diverge.
+   --------------------------------------------------------- */
+
+.settings-tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.settings-tab {
+  display: inline-flex; align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.settings-tab:hover { color: var(--text-primary); }
+.settings-tab.active {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+.settings-tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+
+/* =========================================================
+   2. SETTINGS CARD
+   (surface styling supplied by .surface-card; this only adds
+   padding + max-width)
+   --------------------------------------------------------- */
+
+.settings-card {
+  max-width: 640px;
+  padding: var(--space-4) var(--space-5);
+}
+
+
+/* =========================================================
+   3. SETTINGS ROWS
+   --------------------------------------------------------- */
+
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 48px;
+}
+.settings-row + .settings-row {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.settings-row-label {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.settings-row-hint {
+  margin-top: var(--space-1);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.settings-select {
+  width: auto;
+  min-width: 200px;
+}
+
+
+/* =========================================================
+   4. LANGUAGE PILL TOGGLE (EN | DE)
+   --------------------------------------------------------- */
+
+.lang-pill {
+  position: relative;
+  display: inline-flex; align-items: stretch;
+  padding: 3px;
+  background: var(--surface-sunken, #ececec);
+  border-radius: var(--radius-pill);
+  user-select: none;
+}
+
+/* Sliding highlight thumb behind the two options. */
+.lang-pill-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  height: calc(100% - 6px);
+  background: var(--brand);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  transition: transform var(--t-fast) var(--ease-out);
+  pointer-events: none;
+}
+.lang-pill[data-active="de"] .lang-pill-thumb {
+  transform: translateX(100%);
+}
+
+.lang-pill-btn {
+  position: relative;
+  z-index: 1;
+  min-width: 44px;
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color var(--t-fast);
+}
+.lang-pill-btn.active { color: var(--on-brand); }
+.lang-pill-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   5. ABOUT PANEL
+   System Information card with a brand accent on the left
+   edge and a key/value list, followed by the brand tagline.
+   --------------------------------------------------------- */
+
+.about-panel {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.about-card {
+  position: relative;
+  padding: var(--space-4) var(--space-5);
+  /* Brand accent bar on the left edge (matches image 2). */
+  border-left: 4px solid var(--brand);
+}
+
+.about-card-head {
+  display: flex; align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.about-card-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--brand);
+  flex: 0 0 auto;
+}
+.about-card-title {
+  margin: 0;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+/* Key/value rows inside the card. */
+.about-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.about-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+.about-row:first-child { border-top: none; padding-top: 0; }
+.about-row:last-child  { padding-bottom: 0; }
+
+.about-row dt {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-base);
+}
+.about-row dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+  text-align: right;
+  word-break: break-word;
+}
+
+/* Build-number value is monospaced so the timestamp is easy to scan. */
+.about-build-number {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: var(--fs-sm);
+}
+
+/* Brand promise displayed below the card. Centered, italic, brand color. */
+.about-tagline {
+  margin: 0;
+  padding: 0 var(--space-3);
+  color: var(--brand);
+  font-style: italic;
+  font-weight: var(--fw-semibold);
+  text-align: center;
+  white-space: pre-line; /* honour the \n in the i18n string */
+  line-height: 1.5;
+}

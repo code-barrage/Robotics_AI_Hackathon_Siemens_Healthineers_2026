@@ -1,0 +1,56 @@
+.robot-workflows,
+.robot-editor {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.robot-workflows-header,
+.robot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.robot-workflows-header {
+  justify-content: space-between;
+}
+
+.robot-workflow-card,
+.robot-step-editor,
+.robot-media-fields {
+  padding: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+.robot-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.robot-step-editor,
+.robot-media-fields,
+.robot-button-fields {
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.robot-button-fields {
+  padding: var(--space-3);
+}
+
+.robot-editor {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+@media (max-width: 599px) {
+  .robot-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

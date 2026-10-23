@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Import centralized property sheet -->
+  <Import Project="..\_Globals\PropertySheets\Common.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Acu.ApiGateway</AssemblyName>
+    <RootNamespace>Acu.ApiGateway</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BE\AcuStorage\AcuStorage.csproj" />
+  </ItemGroup>
+
+  <Target Name="BuildAcuStorage" BeforeTargets="ResolveReferences">
+    <!-- Build the storage library first so the DLL exists for the raw reference above. -->
+    <MSBuild
+      Projects="..\BE\AcuStorage\AcuStorage.csproj"
+      Targets="Build"
+      Properties="Configuration=$(Configuration);Platform=$(Platform)" />
+  </Target>
+
+  <ItemGroup>
+    <!-- Exclude the publish output folder from being bundled as web content -->
+    <Content Remove="publish\**" />
+    <None Remove="publish\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Store\" />
+  </ItemGroup>
+
+</Project>
