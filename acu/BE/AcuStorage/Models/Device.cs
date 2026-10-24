@@ -67,4 +67,16 @@ public class Device
     /// </summary>
     [JsonPropertyName("destinations")]
     public List<Destination> Destinations { get; set; } = new();
+
+    /// <summary>
+    /// True while the escort is auto-paused because continuous re-identification
+    /// lost the patient (bot posted a <c>patient_lost</c> event). Cleared when the
+    /// bot re-acquires the patient or an operator resumes manually.
+    /// </summary>
+    [JsonPropertyName("paused")]
+    public bool Paused { get; set; }
+
+    /// <summary>Human-readable reason shown to the operator while <see cref="Paused"/> is true.</summary>
+    [JsonPropertyName("pauseReason")]
+    public string? PauseReason { get; set; }
 }

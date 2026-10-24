@@ -219,6 +219,24 @@ public class BotController(DeviceStore store, WorkflowStore workflowStore, AcuSe
                 }
             }
 
+            // Continuous re-identification: the bot keeps checking it is still the
+            // same person. When it loses them it posts "patient_lost" — auto-pause the
+            // escort and command the bot to halt. "patient_reacquired" (or a fresh
+            // "patient_confirmed") lifts the pause. This failure path is the capability
+            // most teams skip; here it is enforced server-side.
+            if (newEvtStr == "patient_lost")
+            {
+                d.Paused       = true;
+                d.PauseReason  = "Patient lost — re-identification failed. Escort auto-paused.";
+                d.Instructions = "pause";
+            }
+            else if (d.Paused && newEvtStr is "patient_reacquired" or "patient_confirmed")
+            {
+                d.Paused       = false;
+                d.PauseReason  = null;
+                d.Instructions = "resume";
+            }
+
             snapshot = d;
         });
 
@@ -244,6 +262,8 @@ public class BotController(DeviceStore store, WorkflowStore workflowStore, AcuSe
             instructions       = snapshot.Instructions,
             deviceId           = snapshot.DeviceId,
             online             = snapshot.Online,
+            paused             = snapshot.Paused,
+            pauseReason        = snapshot.PauseReason,
             assignedWorkflowId,
             speechLanguage     = settingsStore.Get().SpeechLanguage
         });

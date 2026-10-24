@@ -26,6 +26,8 @@ interface BackendDevice {
   recentEvents?: Array<{ event: string; receivedAt: string }>;
   assignedWorkflowId?: string;
   destinations?: Array<{ name: string; type: string; x?: number; y?: number; z?: number }>;
+  paused?: boolean;
+  pauseReason?: string | null;
 }
 
 function toDeviceRequest(d: BackendDevice): DeviceRequest {
@@ -64,6 +66,8 @@ function toRegisteredDevice(d: BackendDevice): RegisteredDevice {
     eventQueue: d.recentEvents ?? [],
     statusData,
     destinations: d.destinations ?? [],
+    paused: d.paused ?? false,
+    pauseReason: d.pauseReason ?? undefined,
   };
 }
 
@@ -116,6 +120,11 @@ export const deviceApi = {
 
   getInstructionLog: async (_deviceId: string): Promise<Instruction[]> => {
     return []; // instruction log is maintained client-side
+  },
+
+  /** Clear a re-identification auto-pause after the operator confirms the patient is back. */
+  resumeEscort: async (deviceId: string): Promise<void> => {
+    await apiClient.post(`/api/acu/resume/${deviceId}`);
   },
 
   unregisterDevice: async (deviceId: string, mac: string): Promise<void> => {

@@ -53,6 +53,10 @@ export interface RegisteredDevice {
   statusData?: Record<string, string>;
   /** Destinations received from the bot via WebSocket on startup. */
   destinations?: MapDestination[];
+  /** Escort auto-paused because re-identification lost the patient. */
+  paused?: boolean;
+  /** Operator-facing reason shown while paused. */
+  pauseReason?: string;
 }
 
 export interface Instruction {

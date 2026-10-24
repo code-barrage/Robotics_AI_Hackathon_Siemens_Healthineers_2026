@@ -9,6 +9,7 @@ import {
 } from "../../icons";
 import WorkflowTimeline, { type WorkflowStep } from "./WorkflowTimeline";
 import { workflowApi } from "../../api/workflowApi";
+import { deviceApi } from "../../api/deviceApi";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import EmptyState from "../../components/ui/EmptyState";
 import Modal from "../../components/ui/Modal";
@@ -423,6 +424,26 @@ export default function DevicesView({
                       : <><MdWifiOff size={13} />{t("offline")}</>}
                   </span>
                 </div>
+
+                {selectedDevice.paused && (
+                  <div
+                    className="workflow-edited-banner"
+                    role="alert"
+                    style={{ margin: "0 var(--space-4) var(--space-3)", borderColor: "var(--danger)", background: "var(--danger-50, #fdecec)", color: "var(--danger)" }}
+                  >
+                    <MdInfoOutline size={16} />
+                    <span style={{ flex: 1 }}>
+                      {selectedDevice.pauseReason ?? "Escort auto-paused — patient re-identification lost."}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => deviceApi.resumeEscort(selectedDevice.id).catch((e) => console.error("resume failed", e))}
+                    >
+                      Resume escort
+                    </button>
+                  </div>
+                )}
 
                 {robotAssignError && !assignModalOpen && <p role="alert">{robotAssignError}</p>}
                 <div className="detail-tabs" role="tablist" aria-label={t("deviceInfo")}>

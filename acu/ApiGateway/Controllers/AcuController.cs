@@ -47,7 +47,9 @@ public class AcuController(
                 instructions       = d.Instructions,
                 recentEvents       = d.RecentEvents,
                 assignedWorkflowId = wfId,   // null when no workflow is assigned
-                destinations       = d.Destinations  // waypoints received from bot via WebSocket
+                destinations       = d.Destinations, // waypoints received from bot via WebSocket
+                paused             = d.Paused,       // escort auto-paused by re-identification
+                pauseReason        = d.PauseReason
             };
         });
         return Ok(result);
@@ -83,6 +85,26 @@ public class AcuController(
         d.Status = "rejected";
         store.Write(db);
         return Ok(new { message = "Device rejected", deviceId });
+    }
+
+    /// <summary>Manually resume an escort that was auto-paused by re-identification.</summary>
+    /// <remarks>Used by the operator after they confirm the patient is back with the robot.</remarks>
+    [HttpPost("acu/resume/{deviceId}")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    public IActionResult Resume(string deviceId)
+    {
+        var updated = store.ModifyDevice(deviceId, d =>
+        {
+            d.Paused       = false;
+            d.PauseReason  = null;
+            d.Instructions = "resume";
+        });
+
+        if (updated is null)
+            return NotFound(new { error = "Device not found" });
+
+        return Ok(new { message = "Escort resumed", deviceId });
     }
 
     /// <summary>Read the latest telemetry snapshot of a device.</summary>
