@@ -107,6 +107,14 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
 
+# Double-QR arrival check: the patient is re-verified at the destination by scanning a room
+# QR (on the door / physician screen) plus the wristband, confirming "right patient, right room".
+EXPECTED_ROOM = "CT-2"
+ROOM_NAMES = {
+    "CT-2": "CT Room 2", "CT-1": "CT Room 1", "MRI-1": "MRI Room 1", "XR-3": "X-Ray Room 3",
+}
+
+
 def fresh_state() -> dict:
     return {
         "epoch": uuid4().hex,
@@ -133,6 +141,9 @@ def fresh_state() -> dict:
         "events": [],
         "qa": [],
         "patient_confirmed": False,
+        "arrival_room": None,
+        "arrival_room_ok": False,
+        "arrival_verified": False,
         "journey": {"status": "WAITING", "progress": 0, "source": "simulation", "destination": None},
         "messages": [],
         "call": None,
@@ -146,7 +157,7 @@ class Command(BaseModel):
         "reset", "mode", "identify", "id_failed", "mismatch", "baseline",
         "room_blocked", "room_clear", "room_unknown", "pose_start", "pose_verified", "start_preparation",
         "pose_mismatch", "pose_unknown", "question", "acknowledge", "approve",
-        "patient_confirm", "dispatch", "pause", "resume", "arrive", "help",
+        "patient_confirm", "dispatch", "pause", "resume", "arrive", "room_scan", "arrival_verify", "help",
         "resolve_help", "help_cancel", "staff_message", "patient_message",
         "call_request", "call_accept", "call_decline", "call_end",
     ]
@@ -157,6 +168,7 @@ class Command(BaseModel):
     mode: Literal["LIDAR_SIM", "HUMAN_AWARENESS"] | None = None
     call_id: str = Field(default="", max_length=64)
     share_camera: bool = False
+    room: str = Field(default="", max_length=64)
 
 
 class Signal(BaseModel):
@@ -182,6 +194,7 @@ class Hub:
         s = self.state
         return (s["identity"] == "VERIFIED" and s["room"] == "CLEAR" and s["pose"] == "VERIFIED"
                 and s["patient_confirmed"] and s["journey"]["status"] == "ARRIVED"
+                and s["arrival_verified"]
                 and not any(a["active"] and a["kind"] == "help" for a in s["alerts"]))
 
     def snapshot(self) -> dict:
@@ -235,15 +248,13 @@ class Hub:
             "robot": {"reset", "mode", "identify", "mismatch", "baseline", "room_blocked",
                       "room_clear", "room_unknown", "pose_start", "pose_verified", "pose_mismatch",
                       "pose_unknown", "question", "dispatch", "arrive", "patient_confirm", "help", "pause",
-                      "resume", "id_failed"},
+                      "resume", "id_failed", "room_scan", "arrival_verify"},
             # Patient-facing journey screen on the robot's touchscreen.
             "journey": {"identify", "id_failed", "mismatch", "patient_confirm", "dispatch", "pause",
-                        "resume", "arrive", "help", "help_cancel", "question", "reset"},
+                        "resume", "arrive", "room_scan", "arrival_verify", "help", "help_cancel", "question", "reset"},
         }
         if action not in allowed.get(role, set()):
             raise ValueError("This action is not available from this interface.")
-        if action == "reset" and role == "journey" and not s["approved"]:
-            raise ValueError("The journey can only restart after the technologist handoff.")
         if action == "reset":
             self.state = fresh_state()
             self.event("Session reset. Waiting for patient identification.")
@@ -287,7 +298,55 @@ class Hub:
             if role == "journey" and s["journey"]["source"] != "robot":
                 raise ValueError("Only the robot can report arrival.")
             s["journey"].update(status="ARRIVED", progress=100)
-            self.event("Patient has arrived at CT 2.", speech="We have arrived at CT Room 2. Please wait for your care team.")
+            self.event("Patient has arrived at CT 2.", speech="We have arrived at CT Room 2. Please scan the room code and your wristband.")
+        elif action == "room_scan":
+            # Step 1 of the arrival check: the robot automatically scans the QR on the room
+            # door to confirm it reached the right room before asking the patient to re-scan.
+            if s["journey"]["status"] != "ARRIVED":
+                raise ValueError("Mark arrival before scanning the room code.")
+            if s["identity"] != "VERIFIED":
+                raise ValueError("Verify the patient before the room check.")
+            room = (cmd.room or "").strip().upper()
+            if not room:
+                raise ValueError("No room code was scanned.")
+            s["arrival_room"] = room
+            name = ROOM_NAMES.get(room, room)
+            if room == EXPECTED_ROOM:
+                if s["arrival_room_ok"]:
+                    return
+                s["arrival_room_ok"] = True
+                self.resolve("room_mismatch")
+                self.event(
+                    f"ROOM DOOR CONFIRMED: {name} [{cmd.source}]. Asking the patient to re-scan their wristband.",
+                    speech="We've reached the correct room. Please scan your wristband again so I know it's still you.",
+                )
+            else:
+                s["arrival_room_ok"] = False
+                s["arrival_verified"] = False
+                self.alert("room_mismatch",
+                           f"WRONG ROOM: robot scanned {name} at the door, expected {ROOM_NAMES[EXPECTED_ROOM]}.")
+                self.event(
+                    f"ROOM MISMATCH at the door: {name}; expected {ROOM_NAMES[EXPECTED_ROOM]}. Handoff blocked.",
+                    "critical",
+                    speech="This is not the right room. Please wait here — your care team has been alerted.",
+                )
+        elif action == "arrival_verify":
+            # Step 2 of the arrival check: inside the confirmed room, the patient re-scans their
+            # wristband so the robot confirms the right patient is in the right room.
+            if s["journey"]["status"] != "ARRIVED":
+                raise ValueError("Mark arrival before the room check.")
+            if not s["arrival_room_ok"]:
+                raise ValueError("Confirm the room door code before the patient re-scan.")
+            if s["identity"] != "VERIFIED":
+                raise ValueError("Patient identity is not verified.")
+            if s["arrival_verified"]:
+                return
+            s["arrival_verified"] = True
+            self.event(
+                f"ARRIVAL VERIFIED: patient re-scan matches at {ROOM_NAMES[EXPECTED_ROOM]} "
+                f"— right patient, right room [{cmd.source}].",
+                speech="Thank you. You're confirmed in the correct room. Please wait for your care team.",
+            )
         elif action == "pause":
             if s["journey"]["status"] != "MOVING":
                 raise ValueError("There is no moving journey to pause.")
@@ -344,6 +403,8 @@ class Hub:
             s["identity"] = "MISMATCH"
             s["identity_source"] = cmd.source
             s["patient_confirmed"] = False
+            s["arrival_room_ok"] = False
+            s["arrival_verified"] = False
             self.alert("identity", "WARNING: IDENTITY MISMATCH / UNVERIFIED PERSON")
             self.event("Identity mismatch or tracking lost. Clinical details paused.", "warning", PRIVACY)
         elif action == "baseline":
@@ -372,6 +433,8 @@ class Hub:
         elif action == "start_preparation":
             if s["journey"]["status"] != "ARRIVED" or s["identity"] != "VERIFIED" or not s["patient_confirmed"]:
                 raise ValueError("Confirm the patient's identity and arrival before starting preparation.")
+            if not s["arrival_verified"]:
+                raise ValueError("Complete the arrival room check (room + wristband QR) before preparation.")
             if s["approved"]:
                 raise ValueError("The patient has already been handed over.")
             if s["pose_active"]:
@@ -561,7 +624,7 @@ class Hub:
                     changed = True
                 journey = self.state["journey"]
                 if journey["status"] == "MOVING" and journey["source"] != "robot":
-                    journey["progress"] = min(100, journey["progress"] + 2)
+                    journey["progress"] = min(100, journey["progress"] + 8)
                     if journey["progress"] == 100:
                         self.apply(Command(action="arrive", epoch=self.state["epoch"]), "robot")
                     changed = True

@@ -116,7 +116,8 @@ button:disabled { opacity: .45; cursor: default; }
 .route-start { fill: var(--accent); }
 .route-end circle { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 4; }
 .route-end text { font: 700 18px -apple-system, "Segoe UI", sans-serif; fill: var(--accent); }
-.route-dot { fill: #fff; stroke: var(--accent); stroke-width: 7; filter: drop-shadow(0 4px 8px rgba(10, 110, 92, .35)); }
+.route-dot { fill: #fff; stroke: var(--accent); stroke-width: 7; filter: drop-shadow(0 4px 8px rgba(10, 110, 92, .35));
+  transition: cx 1s linear, cy 1s linear; }
 .route.moving .route-dot { animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { stroke-width: 11; } }
 /* Real robot walk: a calm flowing line instead of a made-up percentage. */

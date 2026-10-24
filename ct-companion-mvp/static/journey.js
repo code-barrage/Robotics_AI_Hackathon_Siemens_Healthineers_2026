@@ -34,6 +34,12 @@
       routeLabel: (room, p) => `Route to ${room}. ${p} percent of the way there.`,
       waitTitle: "Please take a seat.",
       waitLead: "Your technologist will come for you soon. Here's something while you wait.",
+      roomDoorTitle: "Reaching your room…",
+      roomDoorLead: "I'm reading the code on the door to be sure this is the right room.",
+      roomPatientTitle: "You're at CT Room 2.",
+      roomPatientLead: "Please scan your wristband again so I know it's still you.",
+      roomHint: "Hold your wristband to the camera.",
+      roomWrong: "This looks like the wrong room. Please wait here — your care team has been alerted.",
       tileBreathe: "Breathe with me", tileCalm: "A calm view", tileFacts: "Did you know?", tileAsk: "Ask a question",
       breatheIn: "Breathe in", breatheOut: "Breathe out",
       breatheLead: "Follow the circle. In through your nose, slowly out through your mouth.",
@@ -115,6 +121,12 @@
       routeLabel: (room, p) => `Weg zu ${room}. ${p} Prozent geschafft.`,
       waitTitle: "Bitte nehmen Sie Platz.",
       waitLead: "Ihr Team holt Sie gleich ab. Hier ist etwas für die Wartezeit.",
+      roomDoorTitle: "Wir erreichen Ihren Raum…",
+      roomDoorLead: "Ich lese den Code an der Tür, um sicherzugehen, dass es der richtige Raum ist.",
+      roomPatientTitle: "Sie sind im CT-Raum 2.",
+      roomPatientLead: "Bitte scannen Sie Ihr Armband noch einmal, damit ich weiß, dass Sie es sind.",
+      roomHint: "Halten Sie Ihr Armband vor die Kamera.",
+      roomWrong: "Das scheint der falsche Raum zu sein. Bitte warten Sie hier — Ihr Team wurde informiert.",
       tileBreathe: "Mit mir atmen", tileCalm: "Ein ruhiger Blick", tileFacts: "Wussten Sie schon?", tileAsk: "Eine Frage stellen",
       breatheIn: "Einatmen", breatheOut: "Ausatmen",
       breatheLead: "Folgen Sie dem Kreis. Durch die Nase ein, langsam durch den Mund aus.",
@@ -193,6 +205,7 @@
   // Speech, navigation and the face camera live in the robot app; this page asks for them by message.
   const params = new URLSearchParams(location.search);
   const robotHosted = params.get("host") === "robot";
+  const EXPECTED_ROOM = "CT-2"; // the room this appointment belongs to (double-QR arrival check)
   // "?mirror=1": a read-only live copy of the robot's screen for the studio / technician. Never speaks or acts.
   const mirror = params.get("mirror") === "1" && !robotHosted;
   const host = { info: null, navigating: null };
@@ -382,9 +395,16 @@
       $("camera").hidden = true;
       hostPost({ type: "camera", on: true });
     }
+    // Only use the native BarcodeDetector if it truly supports QR (it exists but can't
+    // decode QR on macOS Chrome / some browsers). Otherwise fall back to the bundled jsQR.
+    camera.detector = null;
     if ("BarcodeDetector" in window) {
-      try { camera.detector = new BarcodeDetector({ formats: ["qr_code"] }); } catch { camera.detector = null; }
+      try {
+        const formats = await BarcodeDetector.getSupportedFormats();
+        if (formats.includes("qr_code")) camera.detector = new BarcodeDetector({ formats: ["qr_code"] });
+      } catch { camera.detector = null; }
     }
+    if (!camera.detector) loadJsQr().catch(() => {});
     $("privacy").textContent = camera.host && relayCamera() ? T.privacyRelay : T.privacy;
     clearInterval(camera.timer);
     camera.timer = setInterval(cameraTick, 250);
@@ -432,6 +452,17 @@
 
   const cameraSource = () => (camera.host ? $("host-frame") : $("camera"));
 
+  // One <video> element is shared across scenes; move it into the active scene's viewfinder
+  // so the live feed is visible there (reparenting keeps the stream playing).
+  function mountCamera(scene) {
+    const vf = document.querySelector(`#scene-${scene} .viewfinder`);
+    const cam = $("camera"), frame = $("host-frame");
+    if (vf && cam.parentElement !== vf) {
+      vf.insertBefore(frame, vf.firstChild);
+      vf.insertBefore(cam, vf.firstChild);
+    }
+  }
+
   function frame(width, height) {
     const source = cameraSource();
     if (camera.host ? !(source.complete && source.naturalWidth) : !source.videoWidth) return null;
@@ -443,7 +474,7 @@
 
   async function cameraTick() {
     if (local.scene === "welcome") detectPresence();
-    else if (local.scene === "identify") await scanQr();
+    else if (local.scene === "identify" || local.scene === "roomcheck") await scanQr();
   }
 
   function detectPresence() {
@@ -473,6 +504,17 @@
     return data?.patient === "Sid" && data?.exam === "Abdominal CT";
   }
 
+  // Room QR at the destination: {"room":"CT-2"} or plain text "ROOM: CT-2".
+  function roomPayload(text) {
+    let data = null;
+    try { data = JSON.parse(text); } catch {
+      const m = text.match(/ROOM[:\s-]*([A-Z]{2,3}[-\s]?\d+)/i);
+      if (m) data = { room: m[1] };
+    }
+    const r = data?.room ? String(data.room).toUpperCase().replace(/\s+/g, "-") : null;
+    return r && /^[A-Z]{2,3}-\d+$/.test(r) ? r : null;
+  }
+
   async function scanQr() {
     if (Date.now() < local.cooldown || !socket.connected) return;
     let text = null;
@@ -488,6 +530,15 @@
     } catch (error) { console.warn("QR decode failed", error); return; }
     if (!text) return;
     local.cooldown = Date.now() + 3500;
+    if (local.scene === "roomcheck") {
+      if (!state?.arrival_room_ok) {
+        const room = roomPayload(text);                      // step 1: robot reads the door code
+        if (room) socket.send("room_scan", { room, source: "live" });
+      } else if (acceptedPayload(text)) {
+        socket.send("arrival_verify", { source: "live" });   // step 2: patient re-scans wristband
+      }
+      return;
+    }
     if (acceptedPayload(text)) {
       document.querySelector(".viewfinder").classList.add("success");
       socket.send("identify", { source: "live" });
@@ -499,7 +550,7 @@
   }
 
   // ---------- Scenes ----------
-  const STEP_OF = { welcome: 0, identify: 0, confirm: 0, staff: 0, inform: 1, guide: 1, wait: 2, prepare: 3, handoff: 4 };
+  const STEP_OF = { welcome: 0, identify: 0, confirm: 0, staff: 0, inform: 1, guide: 1, roomcheck: 2, wait: 2, prepare: 3, handoff: 4 };
   const helpActive = (s) => s.alerts.some((a) => a.active && a.kind === "help");
 
   function sceneFor(s) {
@@ -509,7 +560,11 @@
     if (!s.patient_confirmed) return "confirm";
     const j = s.journey.status;
     if (j === "MOVING" || j === "PAUSED") return "guide";
-    if (j === "ARRIVED") return s.pose_active ? "prepare" : "wait";
+    if (j === "ARRIVED") {
+      if (s.pose_active) return "prepare";
+      if (!s.arrival_verified) return "roomcheck";
+      return "wait";
+    }
     return "inform";
   }
 
@@ -539,6 +594,7 @@
       document.querySelector(".viewfinder").classList.remove("success");
       startCamera();
     } else if (scene === "identify") {
+      mountCamera("identify");
       $("identify-lead").textContent = T.identifyLead;
       startCamera().then((ok) => {
         if (!ok) { $("identify-lead").textContent = T.identifyNoCamera; speak(T.identifyNoCamera); }
@@ -556,7 +612,13 @@
       stopCamera();
       local.info = 0;
       renderInfo();
+    } else if (scene === "roomcheck") {
+      local.roomPhase = null;
+      mountCamera("roomcheck");
+      startCamera().then((ok) => { if (!ok) $("roomcheck-lead").textContent = T.identifyNoCamera; });
+      renderRoomcheck(s);
     } else if (scene === "wait") {
+      stopCamera();
       openPanel(null);
       speak(`${T.waitTitle} ${T.waitLead}`);
     } else if (scene === "prepare") {
@@ -730,6 +792,20 @@
   }
 
   // ---------- Render ----------
+  function renderRoomcheck(s) {
+    const wrong = Boolean(s.arrival_room && !s.arrival_room_ok);
+    const phase = wrong ? "wrong" : s.arrival_room_ok ? "patient" : "door";
+    $("roomcheck-title").textContent = phase === "patient" ? T.roomPatientTitle : T.roomDoorTitle;
+    $("roomcheck-lead").textContent = phase === "wrong" ? T.roomWrong
+      : phase === "patient" ? T.roomPatientLead : T.roomDoorLead;
+    $("roomcheck-hint").hidden = phase !== "patient";
+    document.querySelector("#scene-roomcheck .viewfinder")?.classList.toggle("alert", phase === "wrong");
+    if (local.roomPhase !== phase) {
+      local.roomPhase = phase;
+      speak(phase === "wrong" ? T.roomWrong : phase === "patient" ? T.roomPatientLead : T.roomDoorLead);
+    }
+  }
+
   function render(s) {
     const previous = state;
     state = s;
@@ -747,6 +823,7 @@
     syncRobotMotion(s);
     if (scene === "guide") renderGuide(s, previous === null || sceneFor(previous) !== "guide");
     if (scene === "prepare") renderPrepare(s, false);
+    if (scene === "roomcheck") renderRoomcheck(s);
     if (scene === "identify") {
       $("attempts").textContent = s.id_attempts > 0 ? T.attempt(s.id_attempts + 1, 3) : "";
     }
@@ -784,9 +861,21 @@
   $("back-home").addEventListener("click", () => { openPanel(null); document.querySelector("#wait-home h1").focus(); });
   $("fact-next").addEventListener("click", () => { local.fact += 1; showFact(); });
   $("finish").addEventListener("click", () => socket.send("reset"));
+  $("restart-demo")?.addEventListener("click", () => { if (confirm("Restart the whole demo from the beginning?")) socket.send("reset"); });
   $("help-cancel").addEventListener("click", () => socket.send("help_cancel"));
   document.querySelectorAll("[data-help]").forEach((b) => b.addEventListener("click", () => { unlockAudio(); socket.send("help"); }));
   document.addEventListener("pointerdown", unlockAudio, { once: true });
+  // Presenter fallback for the arrival room check (webcam double-scan can be finicky live):
+  // V = correct room (CT-2), W = wrong room (MRI-1). Ignored in the read-only mirror.
+  if (!mirror) document.addEventListener("keydown", (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey ||
+        event.target.closest("input, textarea, [contenteditable='true']")) return;
+    const key = event.key.toLowerCase();
+    if (key === "v") {
+      if (!state?.arrival_room_ok) socket.send("room_scan", { room: EXPECTED_ROOM, source: "override" });
+      else socket.send("arrival_verify", { source: "override" });
+    } else if (key === "w") socket.send("room_scan", { room: "MRI-1", source: "override" });
+  });
 
   // Pick up the robot's speech language and CT map point from the team's ACU (via the bridge).
   async function loadAcuContext() {

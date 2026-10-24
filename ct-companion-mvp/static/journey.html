@@ -16,6 +16,8 @@
       <li data-step="3"><span class="dot" aria-hidden="true"></span><span data-t="stepPrepare">Prepare</span></li>
       <li data-step="4"><span class="dot" aria-hidden="true"></span><span data-t="stepScan">Scan</span></li>
     </ol>
+    <button id="restart-demo" title="Restart the whole demo from the beginning" aria-label="Restart demo"
+      style="margin-left:auto;align-self:center;background:rgba(127,127,127,.18);color:inherit;border:1px solid currentColor;border-radius:999px;padding:6px 14px;font:inherit;font-size:14px;cursor:pointer;opacity:.85">↻ Restart</button>
   </header>
 
   <aside class="message" id="message" role="status" hidden>
@@ -101,6 +103,19 @@
     </section>
 
     <!-- Wait: something calm to do. -->
+    <!-- Arrival room check: double-QR that the right patient reached the right room. -->
+    <section class="scene" id="scene-roomcheck" hidden>
+      <div class="visual">
+        <div class="viewfinder" aria-hidden="true"><div class="frame"><div class="scanline"></div></div></div>
+      </div>
+      <div class="copy">
+        <h1 tabindex="-1" id="roomcheck-title">Reaching your room…</h1>
+        <p class="lead" id="roomcheck-lead" aria-live="polite"></p>
+        <p class="hint" id="roomcheck-hint" hidden>Hold your wristband to the camera.</p>
+        <div class="actions"><button class="quiet" data-help data-t="help">Help</button></div>
+      </div>
+    </section>
+
     <section class="scene" id="scene-wait" hidden>
       <div id="wait-home" class="wait-home">
         <h1 tabindex="-1" data-t="waitTitle">Please take a seat.</h1>
